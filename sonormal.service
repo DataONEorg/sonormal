@@ -1,0 +1,13 @@
+[Unit]
+Description=uWSGI sonormal service
+After=network.target
+
+[Service]
+User=vieglais
+Group=www-data
+WorkingDirectory=/home/vieglais/workspace/sonormal
+Environment="PATH=/home/vieglais/.virtualenvs/sonormal/bin"
+ExecStart=/home/vieglais/.virtualenvs/sonormal/bin/uwsgi --ini sonormal.ini
+
+[Install]
+WantedBy=multi-user.target

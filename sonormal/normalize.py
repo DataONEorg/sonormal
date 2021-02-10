@@ -54,7 +54,7 @@ class SoNormalize(object):
 
 def downloadJson(url, headers={}):
     _L = logging.getLogger("downloadJson")
-    response = REQUESTS_SESSION.get(url, headers=headers)
+    response = REQUESTS_SESSION.get(url, headers=headers, timeout=20)
     try:
         jsonld = json.loads(response.content)
         return jsonld, response
@@ -67,5 +67,3 @@ def downloadJson(url, headers={}):
         options={"extractAllScripts": True},
     )
     return jsonld, response
-    #normalizer = SoNormalize()
-    #return normalizer.normalizeSchemaOrg(jsonld)
