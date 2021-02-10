@@ -7,7 +7,7 @@ from . import normalize
 from . import jldextract
 
 def create_app(test_config=None):
-    app = flask.Flask(__name__, instance_relative_config=True)
+    app = flask.Flask(__name__, instance_relative_config=True, static_url_path='')
     if test_config == None:
         app.config.from_pyfile('config.py', silent=True)
     else:
