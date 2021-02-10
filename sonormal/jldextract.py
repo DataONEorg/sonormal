@@ -9,9 +9,9 @@ import pyld
 import requests
 import json
 import tempfile
-import utils
-import opersist.rdfutils
 import glob
+from . import utils
+from . import normalize
 import jnius_config
 import xml.etree.ElementTree as ET
 
@@ -51,6 +51,7 @@ def loadSparqlQueries(query_source):
             queries[qname] = q.strip()
     return queries
 
+#TODO: global var...
 SPARQL_QUERIES = loadSparqlQueries(QUERY_SOURCE)
 
 
@@ -121,9 +122,14 @@ def responseSummary(resp):
     return rs
 
 def jentrify(jsonld, queries):
-    dataManager = autoclass('org.apache.jena.riot.RDFDataMgr')
-    queryFactory = autoclass('org.apache.jena.query.QueryFactory')
-    queryExecutionFactory = autoclass('org.apache.jena.query.QueryExecutionFactory')
+    L = logging.getLogger("jentrify")
+    try:
+        dataManager = autoclass('org.apache.jena.riot.RDFDataMgr')
+        queryFactory = autoclass('org.apache.jena.query.QueryFactory')
+        queryExecutionFactory = autoclass('org.apache.jena.query.QueryExecutionFactory')
+    except Exception as e:
+        L.error(e)
+        return []
     tmpf = tempfile.NamedTemporaryFile(delete=False, suffix=".jsonld")
     fname = tmpf.name
     tmpf.write(jsonld)
@@ -180,28 +186,14 @@ def default():
         data.hashes = None
         data.jbytes = None
         data.ids = None
-        data.jsonld, jresp = loadJsonLD(url)
+        data.jsonld, jresp = normalize.downloadJson(url)
         data.html = jresp.text
         data.jresp = responseSummary(jresp)
 
-        data.jsonld_1 = pyld.jsonld.expand(data.jsonld)
-        ctx = {"@context": {"@vocab": "http://schema.org/"}}
-        opts = {"graph": True, "compactArrays": True, "ordered": True}
-        data.jsonld_2 = pyld.jsonld.compact(data.jsonld_1, ctx, options=opts)
-
-        data.jsonld_3 = copy.deepcopy(data.jsonld_2)
-        data.jsonld_3["@context"]["@vocab"] = "https://schema.org/"
-
-        ctxs = copy.deepcopy(data.jsonld_3["@context"])
-        ctxs["https://schema.org/creator"] = {"@container": "@list"}
-        ctxs["https://schema.org/identifier"] = {"@container": "@list"}
-        data.jsonld_4 = pyld.jsonld.compact(data.jsonld_3, ctxs, options=opts)
-
-        ctxs = copy.deepcopy(data.jsonld_4["@context"])
-        data.jsonld_5 = pyld.jsonld.compact(data.jsonld_4, ctxs, options=opts)
-
-        data.ids = opersist.rdfutils.extractIdentifiers(data.jsonld_5)
-        data.hashes, jbytes = opersist.utils.jsonChecksums(data.jsonld_5)
+        normalizer = normalize.SoNormalize()
+        data.jsonld_4, data.jsonld_3, data.jsonld_2, data.jsonld_1 = normalizer.normalizeSchemaOrg(data.jsonld)
+        data.ids = normalize.extractIdentifiers(data.jsonld_4)
+        data.hashes, jbytes = utils.jsonChecksums(data.jsonld_4)
         data.jbytes = jbytes.decode()
 
         data.indexed = jentrify(jbytes, SPARQL_QUERIES)
