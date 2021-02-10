@@ -1,0 +1,14 @@
+# sonormal
+
+Schema.org extraction and normalization web service.
+
+
+## Operation
+
+Running locally:
+
+----
+export FLASK_APP=sonormal
+export FLASK_ENV=development
+flask run
+----
