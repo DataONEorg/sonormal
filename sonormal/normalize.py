@@ -17,7 +17,6 @@ CONTEXT_CACHE = {}
 
 REQUESTS_SESSION = cachecontrol.CacheControl(requests.session())
 
-
 def cachingDocumentLoader(url, options={}):
     loader = pyld.jsonld.requests_document_loader()
     if url in CONTEXT_CACHE:
@@ -116,6 +115,10 @@ class SoNormalize(object):
 async def downloadJsonRendered(url):
     _L = flask.current_app.logger
     _L.debug("Loading and rendering %s", url)
+    # TODO: Should really be a single browser or pool of them rather than recreating
+    # Actually, this is the preferred mode for doing this stuff:
+    # 1. Only launch a browser when needed
+    # 2. Get rid of it when done, fresh per request is better for longevity
     browser = await pyppeteer.launch(
         handleSIGINT=False,
         handleSIGTERM=False,
@@ -127,7 +130,6 @@ async def downloadJsonRendered(url):
         await page.waitForSelector('#Metadata')
         content = await page.content()
         _L.debug("JLD position: %s", content.find("ld+json"))
-        #_L.debug("Start of content: %s", content[:10000])
         jsonld = pyld.jsonld.load_html(
             content,
             url,
@@ -136,6 +138,7 @@ async def downloadJsonRendered(url):
         )
     finally:
         await browser.close()
+        _L.debug("Exit downloadJsonRendered")
     return jsonld
 
 
