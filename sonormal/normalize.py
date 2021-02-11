@@ -4,8 +4,6 @@ import requests
 import json
 import pyld.jsonld
 import cachecontrol
-import asyncio
-import pyppeteer
 
 SO_NS = "https://schema.org/"
 SO_HTTP_CONTEXT = {"@context": {"@vocab": "http://schema.org/"}}
@@ -25,10 +23,8 @@ def cachingDocumentLoader(url, options={}):
     CONTEXT_CACHE[url] = resp
     return resp
 
+
 pyld.jsonld.set_document_loader(cachingDocumentLoader)
-
-BROWSER = pyppeteer.launch()
-
 
 
 def extractIdentifiers(jsonld: dict):
@@ -87,7 +83,6 @@ def extractIdentifiers(jsonld: dict):
     return ids
 
 
-
 class SoNormalize(object):
     def __init__(self):
         self.L = logging.getLogger(self.__class__.__name__)
@@ -115,20 +110,6 @@ class SoNormalize(object):
         return None, None, None, None
 
 
-async def renderPage(url):
-    b = await BROWSER
-    page = await b.newPage()
-    await page.goto(url)
-    content = await page.content()
-    jsonld = pyld.jsonld.load_html(
-        content,
-        url,
-        profile=None,
-        options={"extractAllScripts": True},
-    )
-    return jsonld
-
-
 def downloadJson(url, headers={}):
     _L = logging.getLogger("downloadJson")
     response = REQUESTS_SESSION.get(url, headers=headers, timeout=20)
@@ -143,9 +124,4 @@ def downloadJson(url, headers={}):
         profile=None,
         options={"extractAllScripts": True},
     )
-    if len(jsonld) < 1:
-        # Try dynamic rendering
-        loop = asyncio.new_event_loop()
-        jsonld = loop.run_until_complete(renderPage(response.url))
-        loop.close()
     return jsonld, response
