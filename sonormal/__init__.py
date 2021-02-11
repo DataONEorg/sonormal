@@ -6,10 +6,11 @@ from . import utils
 from . import normalize
 from . import jldextract
 
+
 def create_app(test_config=None):
-    app = flask.Flask(__name__, instance_relative_config=True, static_url_path='')
+    app = flask.Flask(__name__, instance_relative_config=True, static_url_path="")
     if test_config == None:
-        app.config.from_pyfile('config.py', silent=True)
+        app.config.from_pyfile("config.py", silent=True)
     else:
         app.config.from_mapping(test_config)
     try:
@@ -29,12 +30,11 @@ def create_app(test_config=None):
             return json.dumps(jobj, indent=2)
         return ""
 
-
-    @app.route('/')
+    @app.route("/")
     def normalize_so():
         source_url = flask.request.args.get("url", None)
         if source_url is not None:
-            if not source_url.startswith('http'):
+            if not source_url.startswith("http"):
                 flask.abort(404)
             logging.debug("URL = %s", source_url)
             normalizer = normalize.SoNormalize()
@@ -42,7 +42,7 @@ def create_app(test_config=None):
             jsonld_normalized, _, _, _ = normalizer.normalizeSchemaOrg(jsonld)
             response = app.response_class(
                 response=json.dumps(jsonld_normalized, indent=2),
-                mimetype='application/ld+json'
+                mimetype="application/ld+json",
             )
             return response
         return flask.render_template("index.html")
