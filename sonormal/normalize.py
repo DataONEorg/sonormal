@@ -4,6 +4,9 @@ import requests
 import json
 import pyld.jsonld
 import cachecontrol
+import flask
+import asyncio
+import pyppeteer
 
 SO_NS = "https://schema.org/"
 SO_HTTP_CONTEXT = {"@context": {"@vocab": "http://schema.org/"}}
@@ -85,7 +88,7 @@ def extractIdentifiers(jsonld: dict):
 
 class SoNormalize(object):
     def __init__(self):
-        self.L = logging.getLogger(self.__class__.__name__)
+        self.L = flask.current_app.logger
         self._processor = pyld.jsonld.JsonLdProcessor()
 
     def normalizeSchemaOrg(self, source):
@@ -110,9 +113,33 @@ class SoNormalize(object):
         return None, None, None, None
 
 
+async def downloadJsonRendered(url):
+    _L = flask.current_app.logger
+    _L.debug("Loading and rendering %s", url)
+    browser = await pyppeteer.launch(
+        handleSIGINT=False,
+        handleSIGTERM=False,
+        handleSIGHUP=False
+    )
+    page = await browser.newPage()
+    await page.goto(url)
+    await page.waitForSelector('#Metadata')
+    content = await page.content()
+    _L.debug("JLD position: %s", content.find("ld+json"))
+    _L.debug("Start of content: %s", content[:10000])
+    jsonld = pyld.jsonld.load_html(
+        content,
+        url,
+        profile=None,
+        options={"extractAllScripts": True},
+    )
+    return jsonld
+
+
 def downloadJson(url, headers={}):
-    _L = logging.getLogger("downloadJson")
+    _L = flask.current_app.logger
     response = REQUESTS_SESSION.get(url, headers=headers, timeout=20)
+    _L.debug("Final URL = %s", response.url)
     try:
         jsonld = json.loads(response.content)
         return jsonld, response
@@ -124,4 +151,7 @@ def downloadJson(url, headers={}):
         profile=None,
         options={"extractAllScripts": True},
     )
+    if len(jsonld) < 1:
+        # try loading and rendering page
+        jsonld = asyncio.run(downloadJsonRendered(url))
     return jsonld, response

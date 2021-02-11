@@ -20,11 +20,11 @@ _jars = ["."]
 for jar in glob.glob(f"{_classpath_base}*.jar"):
     _jars.append(jar)
 try:
+    #jnius_config.add_options("-Djava.awt.headless=true")
     jnius_config.set_classpath(*_jars)
 except:
     pass
 from jnius import autoclass
-
 
 jldex = flask.Blueprint("jldex", __name__, template_folder="templates/jldex")
 
@@ -122,7 +122,8 @@ def responseSummary(resp):
     return rs
 
 def jentrify(jsonld, queries):
-    L = logging.getLogger("jentrify")
+    L = flask.current_app.logger
+    L.debug("Starting jentrify...")
     try:
         dataManager = autoclass('org.apache.jena.riot.RDFDataMgr')
         queryFactory = autoclass('org.apache.jena.query.QueryFactory')
@@ -134,9 +135,12 @@ def jentrify(jsonld, queries):
     fname = tmpf.name
     tmpf.write(jsonld)
     tmpf.close()
+    L.debug("jentrify fname= %s", fname)
     dataset = dataManager.loadDataset(fname)
+    L.debug("dataset loaded")
     idxresults = []
     for term, query in queries.items():
+        L.debug("Running query %s", term)
         row = {
             "query": query,
             "term": term,
@@ -154,21 +158,6 @@ def jentrify(jsonld, queries):
         idxresults.append(row)
     os.unlink(fname)
     return idxresults
-
-@jldex.record
-def record(state):
-    """
-    Called when a m_node blueprint is being registered.
-    Args:
-        state: The state information for the BluePrint
-
-    Returns: nothing
-
-    """
-    L = logging.getLogger("m_node.record")
-    name = state.options.get("mnode_name")
-    L.debug("MNODE name = %s", name)
-
 
 @jldex.route(
     "/",
