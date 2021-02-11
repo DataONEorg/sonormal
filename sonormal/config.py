@@ -1,1 +1,1 @@
-static_url_path = ''
+# Config parameters in here
