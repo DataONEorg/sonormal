@@ -12,19 +12,21 @@ import tempfile
 import glob
 from . import utils
 from . import normalize
-import jnius_config
 import xml.etree.ElementTree as ET
 
+'''
+import jnius_config
 _classpath_base = "apache-jena-3.17.0/lib/"
 _jars = ["."]
 for jar in glob.glob(f"{_classpath_base}*.jar"):
     _jars.append(jar)
 try:
-    #jnius_config.add_options("-Djava.awt.headless=true")
+    jnius_config.add_options("-Djava.awt.headless=true")
     jnius_config.set_classpath(*_jars)
 except:
     pass
 from jnius import autoclass
+'''
 
 jldex = flask.Blueprint("jldex", __name__, template_folder="templates/jldex")
 
@@ -185,7 +187,8 @@ def default():
         data.hashes, jbytes = utils.jsonChecksums(data.jsonld_4)
         data.jbytes = jbytes.decode()
 
-        data.indexed = jentrify(jbytes, SPARQL_QUERIES)
+        #data.indexed = jentrify(jbytes, SPARQL_QUERIES)
+        data.indexed = ["Not available."]
 
     response = flask.make_response(flask.render_template("jldex.html", data=data))
     return response, 200
