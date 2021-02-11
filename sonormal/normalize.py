@@ -121,18 +121,21 @@ async def downloadJsonRendered(url):
         handleSIGTERM=False,
         handleSIGHUP=False
     )
-    page = await browser.newPage()
-    await page.goto(url)
-    await page.waitForSelector('#Metadata')
-    content = await page.content()
-    _L.debug("JLD position: %s", content.find("ld+json"))
-    _L.debug("Start of content: %s", content[:10000])
-    jsonld = pyld.jsonld.load_html(
-        content,
-        url,
-        profile=None,
-        options={"extractAllScripts": True},
-    )
+    try:
+        page = await browser.newPage()
+        await page.goto(url)
+        await page.waitForSelector('#Metadata')
+        content = await page.content()
+        _L.debug("JLD position: %s", content.find("ld+json"))
+        #_L.debug("Start of content: %s", content[:10000])
+        jsonld = pyld.jsonld.load_html(
+            content,
+            url,
+            profile=None,
+            options={"extractAllScripts": True},
+        )
+    finally:
+        await browser.close()
     return jsonld
 
 
