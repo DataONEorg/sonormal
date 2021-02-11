@@ -1,0 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Cousine:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+html, p, pre, button, input, code {
+  font-family: 'Cousine', monospace;
+  font-size: 12px;
+  color: #555555;
+}
