@@ -144,7 +144,11 @@ async def downloadJsonRendered(url):
 
 def downloadJson(url, headers={}):
     _L = flask.current_app.logger
-    response = REQUESTS_SESSION.get(url, headers=headers, timeout=20)
+    try:
+        response = REQUESTS_SESSION.get(url, headers=headers, timeout=20)
+    except requests.Timeout as e:
+        _L.error("Reques to %s timed out", url)
+        return {"ERROR": str(e)}, []
     _L.debug("Final URL = %s", response.url)
     try:
         jsonld = json.loads(response.content)

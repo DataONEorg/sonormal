@@ -12,3 +12,16 @@ export FLASK_APP=sonormal
 export FLASK_ENV=development
 flask run
 ----
+
+Optional, for running the SPARQL queries for index view, download and untar Jena in this folder.
+
+----
+wget https://mirror.jframeworks.com/apache/jena/binaries/apache-jena-3.17.0.tar.gz
+tar zxf apache-jena-3.17.0.tar.gz
+----
+
+Then fire up the service:
+
+----
+python jenql/__init__.py
+----

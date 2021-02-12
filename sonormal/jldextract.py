@@ -48,7 +48,11 @@ def loadJsonLD(url):
 
 
 def responseSummary(resp):
-    rs = []
+    def dtdsecs(t):
+        return t.seconds + t.microseconds / 1000000.0
+
+    rs = {"rows":[]}
+    elapsed = 0.0
     for r in resp.history:
         row = {
             "url": r.url,
@@ -56,14 +60,16 @@ def responseSummary(resp):
             "content_type": r.headers.get("Content-Type", "-"),
             "last-modified": r.headers.get("Last-Modified", "-"),
             "result": None,
+            "elapsed": dtdsecs(r.elapsed),
         }
+        elapsed += dtdsecs(r.elapsed)
 
         loc = r.headers.get("Location", None)
         if loc is not None:
             row["result"] = f"Location: {loc}"
         else:
             row["result"] = "<< body >>"
-        rs.append(row)
+        rs["rows"].append(row)
     r = resp
     row = {
         "url": r.url,
@@ -71,18 +77,25 @@ def responseSummary(resp):
         "content_type": r.headers.get("Content-Type", "-"),
         "last-modified": r.headers.get("Last-Modified", "-"),
         "result": None,
+        "elapsed": dtdsecs(r.elapsed),
     }
+    elapsed += dtdsecs(r.elapsed)
+    rs["elapsed"] = elapsed
     loc = r.headers.get("Location", None)
     if loc is not None:
         row["result"] = f"Location: {loc}"
     else:
         row["result"] = "<< body >>"
-    rs.append(row)
+    rs["rows"].append(row)
     return rs
 
 
 def jentrify(jbytes):
-    cli = rpyc.connect("localhost", 9991, config={"allow_all_attrs": True})
+    try:
+        cli = rpyc.connect("localhost", 9991, config={"allow_all_attrs": True})
+    except ConnectionRefusedError as e:
+        flask.current_app.logger.error("Jentrify service not running: %s", e)
+        return []
     proxy = cli.root.jentrify(jbytes)
     result = rpyc.utils.classic.obtain(proxy)
     cli.close()
