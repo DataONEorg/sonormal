@@ -3,6 +3,7 @@ import logging
 import tempfile
 import requests
 import glob
+import time
 import xml.etree.ElementTree as ET
 import rpyc
 import jnius_config
@@ -19,12 +20,14 @@ except:
 from jnius import autoclass
 
 QUERY_SOURCE = "https://raw.githubusercontent.com/DataONEorg/d1_cn_index_processor/develop_2.3/src/main/resources/application-context-schema-org.xml"
+QCACHE_MAX_AGE = 30.0 #seconds
 
 
 class JenqlService(rpyc.Service):
     def __init__(self, *args, **kwargs):
         self.sparql_url = kwargs.pop("sparql_url")
         super().__init__(*args, **kwargs)
+        self._sparql_loaded = 0.0
         self._sparql_queries = self._loadSparqlQueries(self.sparql_url)
 
     def on_connect(self, conn):
@@ -34,7 +37,15 @@ class JenqlService(rpyc.Service):
         pass
 
     def _loadSparqlQueries(self, query_source):
+        L = logging.getLogger("_loadSparqlQueries")
         queries = {}
+        t = time.time()
+        if t - self._sparql_loaded < QCACHE_MAX_AGE:
+            if len(queries) > 1:
+                L.info("Ignoring cache refresh")
+                return
+        self._sparql_loaded = t
+        L.info("Refreshing SPARQL cache from source")
         ns = {
             "b": "http://www.springframework.org/schema/beans",
         }
@@ -56,6 +67,7 @@ class JenqlService(rpyc.Service):
     def _jentrify(self, jsonld):
         L = logging.getLogger("jentrify")
         L.debug("Starting jentrify...")
+        self._loadSparqlQueries(self.sparql_url)
         try:
             dataManager = autoclass("org.apache.jena.riot.RDFDataMgr")
             queryFactory = autoclass("org.apache.jena.query.QueryFactory")
