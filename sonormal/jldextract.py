@@ -130,9 +130,9 @@ def default():
         ) = normalizer.normalizeSchemaOrg(data.jsonld)
         data.ids = normalize.extractIdentifiers(data.jsonld_4)
         data.hashes, jbytes = utils.jsonChecksums(data.jsonld_4)
+        data.nquads = normalizer.nquads(json.loads(jbytes), base=url)
         data.jbytes = jbytes.decode()
         data.indexed = jentrify(jbytes)
-        data.nquads = normalizer.nquads(data.jsonld_4, base=url)
 
     response = flask.make_response(flask.render_template("jldex.html", data=data))
     return response, 200

@@ -101,10 +101,10 @@ class SoNormalize(object):
             n2 = copy.deepcopy(n1)
             n2["@context"]["@vocab"] = "https://schema.org/"
             ctxs = copy.deepcopy(n2["@context"])
-            ctxs["https://schema.org/creator"] = {"@container": "@list"}
-            ctxs["https://schema.org/identifier"] = {"@container": "@list"}
             opts["sorted"] = True
             n3 = pyld.jsonld.compact(n2, ctxs, options=opts)
+            n3["@context"]["creator"] = {"@id":"https://schema.org/creator", "@container": "@list"}
+            n3["@context"]["identifier"] = {"@id":"https://schema.org/identifier", "@container": "@list"}
             return n3, n2, n1, expanded
         except Exception as e:
             self.L.error("Normalize failed: %s", e)
