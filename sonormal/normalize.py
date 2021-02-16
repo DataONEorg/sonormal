@@ -112,6 +112,14 @@ class SoNormalize(object):
         return None, None, None, None
 
 
+    def nquads(self, jsonld, base=None):
+        options = {
+            "format":"application/n-quads",
+            "base": base
+        }
+        nq = pyld.jsonld.to_rdf(jsonld, options=options)
+        return nq
+
 async def downloadJsonRendered(url):
     _L = flask.current_app.logger
     _L.debug("Loading and rendering %s", url)

@@ -18,6 +18,7 @@
   <div class="tab">
     <button id="defaultOpen" class="tablinks" onclick="openTab(event,'ids')">IDs</button>
     <button class="tablinks" onclick="openTab(event,'indexed')">Indexed</button>
+    <button class="tablinks" onclick="openTab(event,'nquads')">NQuads</button>
     <button class="tablinks" onclick="openTab(event,'bytes')">Hashable</button>
     <button class="tablinks" onclick="openTab(event,'jsonld_4')">4 Container Hack</button>
     <button class="tablinks" onclick="openTab(event,'jsonld_3')">3 NS Hack</button>
@@ -46,6 +47,9 @@
       </dl>
       <hr />
     {% set idx = idx+1 %}{% endfor %}</div>
+    <div id="nquads" class="tabcontent">
+      <pre class="value">{{data.nquads}}</pre>
+    </div>
     <div id="bytes" class="tabcontent">
       <pre class="value">{{data.jbytes}}</pre>
     </div>
