@@ -7,8 +7,8 @@ import pyld
 import requests
 import json
 import rpyc
-from . import utils
-from . import normalize
+from sonormal import utils
+from sonormal import normalize
 
 jldex = flask.Blueprint("jldex", __name__, template_folder="templates/jldex")
 
@@ -51,7 +51,7 @@ def responseSummary(resp):
     def dtdsecs(t):
         return t.seconds + t.microseconds / 1000000.0
 
-    rs = {"rows":[]}
+    rs = {"rows": []}
     elapsed = 0.0
     for r in resp.history:
         row = {
@@ -100,6 +100,7 @@ def jentrify(jbytes):
     result = rpyc.utils.classic.obtain(proxy)
     cli.close()
     return result
+
 
 @jldex.route(
     "/",

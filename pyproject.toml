@@ -37,9 +37,11 @@ pyppeteer = "^0.2.5"
 uWSGI = "^2.0.19"
 rpyc = "^5.0.1"
 pyjnius = "^1.3.0"
+"org.webpki.json" = {git = "https://github.com/datadavev/json-canonicalization.git", rev = "develop"}
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
 pylint = "^2.6.0"
+black = {version = "^20.8b1", allow-prereleases = true}
 
 [tool.poetry.extras]
 docs = [
