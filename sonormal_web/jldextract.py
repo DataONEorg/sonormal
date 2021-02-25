@@ -7,8 +7,10 @@ import pyld
 import requests
 import json
 import rpyc
-from sonormal import utils
-from sonormal import normalize
+import sonormal.utils
+import sonormal.getjsonld
+import sonormal.normalize
+import sonormal.checksums
 
 jldex = flask.Blueprint("jldex", __name__, template_folder="templates/jldex")
 
@@ -111,29 +113,59 @@ def jentrify(jbytes):
 )
 def default():
     url = flask.request.args.get("url", None)
+    force_lists = flask.request.args.get("lists", False)
     data = objdict()
+    errors = []
     data.url = None
     if not url is None:
         data.url = url
         data.hashes = None
         data.jbytes = None
         data.ids = None
-        data.jsonld, jresp = normalize.downloadJson(url)
+        data.jsonld = None
+        data.jsonld_normalized = None
+        data.jsonld_framed = None
+        data.jsonld_compacted = None
+        data.jsonld_canonical = None
+        data.jsonld, jresp = sonormal.getjsonld.downloadJson(url)
+        if force_lists:
+            data.jsonld = sonormal.normalize.forceSODatasetLists(data.jsonld)
         data.html = jresp.text
+        options = {"base": jresp.url}
         data.jresp = responseSummary(jresp)
+        try:
+            data.jsonld_normalized = sonormal.normalize.normalizeJsonld(
+                data.jsonld, options=options
+            )
+        except Exception as e:
+            errors.append({"at": "normalize", "e": str(e)})
+        if data.jsonld_normalized is not None:
+            try:
+                data.nquads = sonormal.normalize.jsonldToNquads(
+                    data.jsonld_normalized, options=options
+                )
+            except Exception as e:
+                errors.append({"at": "nquads", "e": str(e)})
+                # raise (e)
+            data.jsonld_framed = sonormal.normalize.frameSODataset(
+                data.jsonld_normalized
+            )
 
-        normalizer = normalize.SoNormalize()
-        (
-            data.jsonld_4,
-            data.jsonld_3,
-            data.jsonld_2,
-            data.jsonld_1,
-        ) = normalizer.normalizeSchemaOrg(data.jsonld)
-        data.ids = normalize.extractIdentifiers(data.jsonld_4)
-        data.hashes, jbytes = utils.jsonChecksums(data.jsonld_4)
-        data.nquads = normalizer.nquads(json.loads(jbytes), base=url)
-        data.jbytes = jbytes.decode()
-        data.indexed = jentrify(jbytes)
+        if data.jsonld_framed is not None:
+            data.jsonld_compacted = sonormal.normalize.compactSODataset(
+                data.jsonld_framed, options=options
+            )
+            data.ids = sonormal.normalize.getDatasetsIdentifiers(data.jsonld_framed)
 
-    response = flask.make_response(flask.render_template("jldex.html", data=data))
+        if data.jsonld_normalized is not None:
+            data.hashes, data.jsonld_canonical = sonormal.checksums.jsonChecksums(
+                data.jsonld_normalized
+            )
+            data.indexed = jentrify(data.jsonld_canonical)
+            # make canonical string for rendering
+            data.jsonld_canonical = data.jsonld_canonical.decode()
+
+    response = flask.make_response(
+        flask.render_template("jldex.html", data=data, errors=errors, force_lists=force_lists)
+    )
     return response, 200

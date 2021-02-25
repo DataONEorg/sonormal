@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-import org.webpki.json.Canonicalize
+import c14n
 
 HASH_BLOCK_SIZE = 65536
 
@@ -44,7 +44,7 @@ def jsonChecksums(doc):
         dict of hashes, bytes
 
     """
-    b = org.webpki.json.Canonicalize.canonicalize(doc)
+    b = c14n.canonicalize(doc)
     return computeChecksumsBytes(b)
 
 

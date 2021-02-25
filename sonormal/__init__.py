@@ -21,6 +21,24 @@ SO_DATASET = f"{SO_}Dataset"
 SO_IDENTIFIER = f"{SO_}identifier"
 SO_VALUE = f"{SO_}value"
 SO_URL = f"{SO_}url"
+SO_PROPERTY_ID = f"{SO_}propertyID"
+
+SO_COMPACT_CONTEXT = {
+    "@context": [
+        "https://schema.org/",
+        {
+            "id":"id",
+            "type":"type"
+        }
+    ]
+}
+
+SO_DATASET_FRAME = {
+    "@context": "https://schema.org/",
+    "@type": "Dataset",
+    "identifier": {},
+    "creator": {},
+}
 
 # regexp to match the typical location of the schema.org remote context
 SO_MATCH = re.compile(r"http(s)?\://schema.org(/)?")

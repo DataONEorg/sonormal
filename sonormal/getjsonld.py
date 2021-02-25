@@ -2,10 +2,12 @@
 Retrieve JSON-LD from a URL
 """
 import logging
+import json
 import requests
-import sonormal
-import pyppeteer
+import asyncio
 import pyld.jsonld
+import pyppeteer
+import sonormal
 
 # Wait this long for a browser to render a page
 BROWSER_RENDER_TIMEOUT = 5000  # msec
@@ -21,6 +23,7 @@ async def downloadJsonRendered(url):
     browser = await pyppeteer.launch(
         handleSIGINT=False, handleSIGTERM=False, handleSIGHUP=False
     )
+    jsonld = []
     try:
         page = await browser.newPage()
         await page.goto(url)
@@ -37,6 +40,8 @@ async def downloadJsonRendered(url):
             profile=None,
             options={"extractAllScripts": True},
         )
+    except Exception as e:
+        _L.error(e)
     finally:
         await browser.close()
         _L.debug("Exit downloadJsonRendered")

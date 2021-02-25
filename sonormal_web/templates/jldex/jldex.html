@@ -1,84 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>sonormal - detail</title>
   <link rel="stylesheet" href="{{url_for('static', filename='sonormal.css')}}">
   <script src="{{url_for('static', filename='sonormal.js')}}"></script>
 </head>
+
 <body>
-<section id="main">
-  <form >
-    <p>Source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80" value="{{data.url if data.url is not none else 'https://datadryad.org/stash/dataset/doi:10.5061/dryad.m8s2r36'}}"></input>
-    </p>
-  </form>
-</section>
-{% if data.url is not none %}
-<section id="result">
-  <div class="tab">
-    <button id="defaultOpen" class="tablinks" onclick="openTab(event,'ids')">IDs</button>
-    <button class="tablinks" onclick="openTab(event,'indexed')">Indexed</button>
-    <button class="tablinks" onclick="openTab(event,'nquads')">NQuads</button>
-    <button class="tablinks" onclick="openTab(event,'bytes')">Hashable</button>
-    <button class="tablinks" onclick="openTab(event,'jsonld_4')">4 Container Hack</button>
-    <button class="tablinks" onclick="openTab(event,'jsonld_3')">3 NS Hack</button>
-    <button class="tablinks" onclick="openTab(event,'jsonld_2')">2 Compacted</button>
-    <button class="tablinks" onclick="openTab(event,'jsonld_1')">1 Expanded</button>
-    <button class="tablinks" onclick="openTab(event,'jsonld')">JSON-LD</button>
-    <button class="tablinks" onclick="openTab(event,'html')">Body</button>
-    <button class="tablinks" onclick="openTab(event,'responses')">HTTP Responses</button>
-  </div>
-  <div class="data">
-    <div id="ids" class="tabcontent">
-      <pre class="value">{{data.url}}</pre>
-      <hr />
-      <pre class="value">{{data.ids|asjson}}</pre>
-      <hr />
-      <pre class="value">{{data.hashes|asjson}}</pre>
+  <section id="main">
+    <form>
+      <p>Source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80"
+          value="{{data.url if data.url is not none else 'https://datadryad.org/stash/dataset/doi:10.5061/dryad.m8s2r36'}}"></input>
+          <span>Force @list?</span><input type="checkbox" name="lists" {%if force_lists %}checked="1"{% endif %}/>
+        </p>
+    </form>
+  </section>
+  {% if data.url is not none %}
+  <section id="result">
+    {% if errors|length > 0 %}
+    <div class="errors">
+      {% for err in errors %}<code>{{err|asjson}}</code>
+      {% endfor %}
     </div>
-    <div id="indexed" class="tabcontent">{% set idx=1 %}{% for e in data.indexed %}
-      <dl>
-        <dt>Term:</dt>
-        <dd class="value">{{e.term}}</dd>
-        <dt>Values:</dt>
-        <dd>{% for v in e.v %}<code class="value">{{v}}</code><br />{% endfor %}</dd>
-        <dt onclick="toggle('query_{{loop.index}}')">(Show SPARQL)</dt>
-        <dd><pre id="query_{{loop.index}}" class="value" style="display:none">{{e.query}}</pre></dd>
-      </dl>
-      <hr />
-    {% set idx = idx+1 %}{% endfor %}</div>
-    <div id="nquads" class="tabcontent">
-      <pre class="value">{{data.nquads}}</pre>
+    {% endif %}
+    <div class="tab">
+      <button id="defaultOpen" class="tablinks" onclick="openTab(event,'ids')">IDs</button>
+      <button class="tablinks" onclick="openTab(event,'indexed')">Indexed</button>
+      <button class="tablinks" onclick="openTab(event,'nquads')">NQuads</button>
+      <button class="tablinks" onclick="openTab(event,'canonical')">Canonical</button>
+      <button class="tablinks" onclick="openTab(event,'jsonld_compacted')">Compacted</button>
+      <button class="tablinks" onclick="openTab(event,'jsonld_framed')">Framed</button>
+      <button class="tablinks" onclick="openTab(event,'jsonld_normalized')">Normalized</button>
+      <button class="tablinks" onclick="openTab(event,'jsonld')">JSON-LD</button>
+      <button class="tablinks" onclick="openTab(event,'html')">Body</button>
+      <button class="tablinks" onclick="openTab(event,'responses')">HTTP Responses</button>
     </div>
-    <div id="bytes" class="tabcontent">
-      <pre class="value">{{data.jbytes}}</pre>
+    <div class="data">
+      <div id="ids" class="tabcontent">
+        <pre class="value">{{data.url}}</pre>
+        <hr />
+        <pre class="value">{{data.ids|asjson}}</pre>
+        <hr />
+        <pre class="value">{{data.hashes|asjson}}</pre>
+      </div>
+      <div id="indexed" class="tabcontent">{% set idx=1 %}{% for e in data.indexed %}
+        <dl>
+          <dt>Term:</dt>
+          <dd class="value">{{e.term}}</dd>
+          <dt>Values:</dt>
+          <dd>{% for v in e.v %}<code class="value">{{v}}</code><br />{% endfor %}</dd>
+          <dt onclick="toggle('query_{{loop.index}}')">(Show SPARQL)</dt>
+          <dd>
+            <pre id="query_{{loop.index}}" class="value" style="display:none">{{e.query}}</pre>
+          </dd>
+        </dl>
+        <hr />
+        {% set idx = idx+1 %}{% endfor %}
+      </div>
+      <div id="nquads" class="tabcontent">
+        <pre class="value">{{data.nquads}}</pre>
+      </div>
+      <div id="canonical" class="tabcontent">
+        <code class="value">{{data.jsonld_canonical}}</code>
+      </div>
+      <div id="jsonld_compacted" class="tabcontent">
+        <pre class="value">{{data.jsonld_compacted|asjson}}</pre>
+      </div>
+      <div id="jsonld_framed" class="tabcontent">
+        <pre class="value">{{data.jsonld_framed|asjson}}</pre>
+      </div>
+      <div id="jsonld_normalized" class="tabcontent">
+        <pre class="value">{{data.jsonld_normalized|asjson}}</pre>
+      </div>
+      <div id="jsonld" class="tabcontent">
+        <pre class="value">{{data.jsonld|asjson}}</pre>
+      </div>
+      <div id="html" class="tabcontent">
+        <pre class="value">{{data.html}}</pre>
+      </div>
+      <div id="responses" class="tabcontent">
+        <pre class="value">{{data.jresp|asjson}}</pre>
+      </div>
     </div>
-    <div id="jsonld_4" class="tabcontent">
-      <pre class="value">{{data.jsonld_4|asjson}}</pre>
-    </div>
-    <div id="jsonld_3" class="tabcontent">
-      <pre class="value">{{data.jsonld_3|asjson}}</pre>
-    </div>
-    <div id="jsonld_2" class="tabcontent">
-      <pre class="value">{{data.jsonld_2|asjson}}</pre>
-    </div>
-    <div id="jsonld_1" class="tabcontent">
-      <pre class="value">{{data.jsonld_1|asjson}}</pre>
-    </div>
-    <div id="jsonld" class="tabcontent">
-      <pre class="value">{{data.jsonld|asjson}}</pre>
-    </div>
-    <div id="html" class="tabcontent">
-      <pre class="value">{{data.html}}</pre>
-    </div>
-    <div id="responses" class="tabcontent">
-      <pre class="value">{{data.jresp|asjson}}</pre>
-    </div>
-  </div>
-</section>
-{% endif %}
-<script>
-  document.getElementById("defaultOpen").click();
-</script>
+  </section>
+  {% endif %}
+  <script>
+    document.getElementById("defaultOpen").click();
+  </script>
 </body>
+
 </html>

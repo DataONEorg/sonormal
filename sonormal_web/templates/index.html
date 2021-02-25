@@ -1,14 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>sonormal</title>
   <link rel="stylesheet" href="{{url_for('static', filename='sonormal.css')}}">
 </head>
+
 <body>
-<form>
-  <p>Source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80" value=""></input></p>
-  <p><a href="{{url_for('jldex.default')}}">Alternate view with more detail.</a></p>
-</form>
+  <form action="/e/" />
+  <p>Extract from source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80"
+      value=""></input></p>
+  </form>
+  <form action="/n/" />
+  <p>Normalize source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80"
+      value=""></input></p>
+  </form>
+  <form action="/f/" />
+  <p>Frame source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80"
+      value=""></input>
+    <span>Normalize? </span><input type="checkbox" name="n" />
+  </p>
+  </form>
+  <form action="/i/" />
+  <p>Identifiers source URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url" size="80"
+      value=""></input>
+    <span>Normalize? </span><input type="checkbox" name="n" />
+    <span>Frame? </span><input type="checkbox" name="f" checked="1" />
+  </p>
+  </form>
+  <form action="/c/" />
+  <p>Canonicalize JSON from URL: <input type="submit" value="Go"></input><input type="text" id="url" name="url"
+      size="80" value=""></input>
+    <span>Normalize? </span><input type="checkbox" name="n" />
+  </p>
+  </form>
+
 </body>
+
 </html>
