@@ -41,20 +41,21 @@ def _getListIdentifiers(doc):
 
 
 def _getDatasetIdentifiers(jdoc):
-    ids = {"@id": [], "url": [], "identifier": []}
     t = jdoc.get("@type", [])
-    if sonormal.SO_DATASET in t:
-        _id = jdoc.get("@id", None)
-        if _id is not None:
-            ids["@id"].append(_id)
-        _urls = jdoc.get(sonormal.SO_URL, [])
-        for _url in _urls:
-            u = _getValueOrURI(_url)
-            if not u is None:
-                ids["url"].append(u)
-        for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
-            ids["identifier"] += _getListIdentifiers(ident)
-            ids["identifier"] += _getIdentifiers(ident)
+    if not sonormal.SO_DATASET in t:
+        return None
+    ids = {"@id": [], "url": [], "identifier": []}
+    _id = jdoc.get("@id", None)
+    if _id is not None:
+        ids["@id"].append(_id)
+    _urls = jdoc.get(sonormal.SO_URL, [])
+    for _url in _urls:
+        u = _getValueOrURI(_url)
+        if not u is None:
+            ids["url"].append(u)
+    for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
+        ids["identifier"] += _getListIdentifiers(ident)
+        ids["identifier"] += _getIdentifiers(ident)
     return ids
 
 
@@ -71,7 +72,9 @@ def getDatasetsIdentifiers(jdoc):
     """
     ids = []
     for doc in jdoc:
-        ids.append(_getDatasetIdentifiers(doc))
+        _ids = _getDatasetIdentifiers(doc)
+        if not _ids is None:
+            ids.append(_ids)
     return ids
 
 
