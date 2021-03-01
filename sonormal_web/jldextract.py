@@ -60,7 +60,7 @@ def responseSummary(resp):
             "url": r.url,
             "status_code": r.status_code,
             "content_type": r.headers.get("Content-Type", "-"),
-            "last-modified": r.headers.get("Last-Modified", "-"),
+            "last_modified": r.headers.get("Last-Modified", "-"),
             "result": None,
             "elapsed": dtdsecs(r.elapsed),
         }
@@ -77,7 +77,7 @@ def responseSummary(resp):
         "url": r.url,
         "status_code": r.status_code,
         "content_type": r.headers.get("Content-Type", "-"),
-        "last-modified": r.headers.get("Last-Modified", "-"),
+        "last_modified": r.headers.get("Last-Modified", "-"),
         "result": None,
         "elapsed": dtdsecs(r.elapsed),
     }
@@ -127,7 +127,11 @@ def default():
         data.jsonld_framed = None
         data.jsonld_compacted = None
         data.jsonld_canonical = None
-        data.jsonld, jresp = sonormal.getjsonld.downloadJson(url)
+        #rheaders = {
+        #    "Accept":"application/ld+json"
+        #}
+        rheaders = {}
+        data.jsonld, jresp = sonormal.getjsonld.downloadJson(url, headers=rheaders)
         if force_lists:
             data.jsonld = sonormal.normalize.forceSODatasetLists(data.jsonld)
         data.html = jresp.text

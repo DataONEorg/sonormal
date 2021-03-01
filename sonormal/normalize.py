@@ -64,7 +64,7 @@ def getDatasetsIdentifiers(jdoc):
     Extract PID, series_id, alt_identifiers from a list of JSON-LD blocks
 
     Args:
-        jdoc: normalized JSON ld document
+        jdoc: framed with Dataset aspect
 
     Returns:
         dict with pid, sid, and alternates
