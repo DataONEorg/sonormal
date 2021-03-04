@@ -11,6 +11,7 @@ import sonormal
 import pyld.jsonld
 import c14n
 
+__L = logging.getLogger("sonormal")
 
 def _getValueOrURI(doc):
     v = doc.get("@value", None)
@@ -112,9 +113,14 @@ def forceSODatasetLists(jdoc):
 
 
 def frameSODataset(jdoc):
+    __L.debug("Framing")
     frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
-    fdoc = pyld.jsonld.frame(jdoc, frame_doc)
-    return pyld.jsonld.expand(fdoc)
+    try:
+        fdoc = pyld.jsonld.frame(jdoc, frame_doc)
+        return pyld.jsonld.expand(fdoc)
+    except Exception as e:
+        __L.exception(e)
+    return []
 
 
 def compactSODataset(jdoc, options={}):
