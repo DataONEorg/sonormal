@@ -1,6 +1,8 @@
 import os
 import logging
 import flask
+import flask.logging
+import flask_cors
 import json
 import sonormal.utils
 import sonormal.normalize
@@ -9,8 +11,10 @@ import sonormal.getjsonld
 from . import jldextract
 
 
+
 def create_app(test_config=None):
     app = flask.Flask(__name__, instance_relative_config=True, static_url_path="")
+    flask_cors.CORS(app)
     if test_config == None:
         app.config.from_pyfile("config.py", silent=True)
     else:
@@ -19,8 +23,20 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
+
+    for logger in (
+        #app.logger,
+        logging.getLogger("sonormal"),
+        logging.getLogger("sonormal.getjsonld"),
+        #logging.getLogger("")
+    ):
+        logger.addHandler(flask.logging.default_handler)
+        logger.setLevel(logging.DEBUG)
+
+    sonormal.installDocumentLoader()
     options = {}
     app.register_blueprint(jldextract.jldex, url_prefix="/jldex", **options)
+    app.logger.debug("Exiting create_app")
 
     @app.template_filter()
     def datetimeToJsonStr(dt):
@@ -44,9 +60,9 @@ def create_app(test_config=None):
         if not source_url.startswith("http"):
             flask.abort(404)
         logging.debug("URL = %s", source_url)
-        jsonld, responses = sonormal.getjsonld.downloadJson(source_url)
-        response = app.response_class(
-            response=json.dumps(jsonld, indent=2),
+        doc = sonormal.getjsonld.downloadJson(source_url)
+        response = flask.Response(
+            response=json.dumps(doc["document"], indent=2).encode("utf-8"),
             mimetype="application/ld+json",
         )
         return response
@@ -59,9 +75,9 @@ def create_app(test_config=None):
         if not source_url.startswith("http"):
             flask.abort(404)
         logging.debug("URL = %s", source_url)
-        jsonld, responses = sonormal.getjsonld.downloadJson(source_url)
-        opts = {"base": responses.url}
-        jsonld_normalized = sonormal.normalize.normalizeJsonld(jsonld, options=opts)
+        doc = sonormal.getjsonld.downloadJson(source_url)
+        opts = {"base": doc["documentUrl"]}
+        jsonld_normalized = sonormal.normalize.normalizeJsonld(doc["document"], options=opts)
         response = app.response_class(
             response=json.dumps(jsonld_normalized, indent=2),
             mimetype="application/ld+json",
@@ -77,9 +93,11 @@ def create_app(test_config=None):
             flask.abort(404)
         do_normalize = flask.request.args.get("n", False)
         logging.debug("URL = %s", source_url)
-        jsonld, _ = sonormal.getjsonld.downloadJson(source_url)
+        doc = sonormal.getjsonld.downloadJson(source_url)
+        opts = {"base": doc["documentUrl"]}
+        jsonld = doc["document"]
         if do_normalize:
-            jsonld = sonormal.normalize.normalizeJsonld(jsonld)
+            jsonld = sonormal.normalize.normalizeJsonld(jsonld, options=opts)
         jsonld_framed = sonormal.normalize.frameSODataset(jsonld)
         response = app.response_class(
             response=json.dumps(jsonld_framed, indent=2),
@@ -130,3 +148,9 @@ def create_app(test_config=None):
         return response
 
     return app
+
+
+if __name__ == "__main__":
+    app = create_app()
+    app.run(debug=True)
+    

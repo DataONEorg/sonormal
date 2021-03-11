@@ -20,7 +20,7 @@ except:
 from jnius import autoclass
 
 QUERY_SOURCE = "https://raw.githubusercontent.com/DataONEorg/d1_cn_index_processor/develop_2.3/src/main/resources/application-context-schema-org.xml"
-QCACHE_MAX_AGE = 30.0 #seconds
+QCACHE_MAX_AGE = 30.0  # seconds
 
 
 class JenqlService(rpyc.Service):

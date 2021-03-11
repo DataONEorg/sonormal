@@ -1,9 +1,12 @@
+import os
 import logging
 import requests
 import re
 import string
 import pyld.jsonld
 import urllib.parse as urllib_parse
+import diskcache
+import atexit
 
 __L = logging.getLogger("sonormal")
 
@@ -39,7 +42,11 @@ SO_DATASET_FRAME = {
 SO_MATCH = re.compile(r"http(s)?\://schema.org(/)?")
 
 # Location of the schema.org context document
-SO_CONTEXT_LOCATION = "https://raw.githubusercontent.com/schemaorg/schemaorg/main/data/releases/12.0/schemaorgcontext.jsonld"
+# Currently forcing to a specific revision of SO that uses the https context
+# More detail at https://github.com/schemaorg/schemaorg/pull/2814#issuecomment-795667992
+#SO_CONTEXT_LOCATION = "https://schema.org/docs/jsonldcontext.jsonld"
+# Set to use a specific version of schema.org context
+SO_CONTEXT_LOCATION = "https://raw.githubusercontent.com/schemaorg/schemaorg/836cae785cfcb09fe69d0a611be9b8c73b67a0d4/data/releases/12.0/schemaorgcontext.jsonld"
 FORCE_SO_VERSION = True
 
 # Timeout for the document loader requests
@@ -56,9 +63,20 @@ DEFAULT_RESPONSE_CONTENT_TYPE = MEDIA_HTML
 # consistently per target.
 DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7, */*;q=0.1"
 
-# TODO: use a real cache
-DOCUMENT_CACHE = {}
+# Path to the document cache
+DOCUMENT_CACHE_PATH = os.path.expanduser("~/.local/share/sonormal/cache")
+os.makedirs(DOCUMENT_CACHE_PATH, exist_ok=True)
 
+DOCUMENT_CACHE_TIMEOUT = 300 #Cache object expiration in seconds
+
+# Global cache for downloaded stuff, especially context documents
+DOCUMENT_CACHE = diskcache.Cache(DOCUMENT_CACHE_PATH)
+
+def __cleanup():
+    global DOCUMENT_CACHE
+    DOCUMENT_CACHE.close()
+
+atexit.register(__cleanup)
 
 class ObjDict(dict):
     def __getattr__(self, name):
@@ -241,6 +259,7 @@ def cachingDocumentLoader(url, options={}):
     if FORCE_SO_VERSION and SO_MATCH.match(url) is not None:
         __L.debug("Forcing schema.org v12 context")
         url = SO_CONTEXT_LOCATION
+    global DOCUMENT_CACHE
     if url in DOCUMENT_CACHE:
         __L.debug("From cache")
         return DOCUMENT_CACHE[url]
@@ -250,10 +269,13 @@ def cachingDocumentLoader(url, options={}):
         timeout=options.get("timeout"), allow_redirects=options.get("allow_redirects")
     )
     resp = loader(url, options=options)
-    DOCUMENT_CACHE[url] = resp
+    DOCUMENT_CACHE.set(url, resp, expire=DOCUMENT_CACHE_TIMEOUT)
     return resp
 
 
 def installDocumentLoader():
     __L.info("Installing cachingDocumentLoader")
+    __L.info("FORCE_SO_VERSION: %s", FORCE_SO_VERSION)
     pyld.jsonld.set_document_loader(cachingDocumentLoader)
+    global DOCUMENT_CACHE
+    DOCUMENT_CACHE.expire()

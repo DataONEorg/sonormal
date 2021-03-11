@@ -8,7 +8,7 @@ Schema.org extraction and normalization web service.
 Running locally:
 
 ----
-export FLASK_APP=sonormal
+export FLASK_APP=sonormal_web
 export FLASK_ENV=development
 flask run
 ----

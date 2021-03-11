@@ -8,10 +8,13 @@ import logging
 import logging.config
 import json
 import click
+import requests
 import pyld.jsonld
 import sonormal
+import sonormal.utils
 import sonormal.getjsonld
 import sonormal.normalize
+import sonormal.checksums
 
 logging_config = {
     "version": 1,
@@ -80,36 +83,42 @@ def logResponseInfo(resp):
 @click.group()
 @click.pass_context
 @click.option("-W", "--webpage", is_flag=True, help="Render SPA page")
-def main(ctx, webpage):
+@click.option("-r", "--response", is_flag=True, help="Show response information")
+@click.option("-b", "--base", default=None, help="Base URI")
+@click.option("-p", "--profile", default=None, help="JSON-LD Profile")
+@click.option("-P", "--request-profile", default=None, help="JSON-LD Request Profile")
+@click.option(
+    "--soprod",
+    is_flag=True,
+    help="Use schema.org production context instead of v12 https",
+)
+def main(ctx, webpage, response, base, profile, request_profile, soprod):
     ctx.ensure_object(dict)
     logging.config.dictConfig(logging_config)
+    if soprod:
+        sonormal.FORCE_SO_VERSION = False
     sonormal.installDocumentLoader()
     ctx.obj["render"] = webpage
-
-
-@main.command("get")
-@click.argument("url")
-@click.option(
-    "-f",
-    "--format",
-    type=click.Choice(["jsonld", "nquads"], case_sensitive=False),
-    default="jsonld",
-    help="Output format",
-)
-@click.option("-r", "--response", is_flag=True, help="Show response information")
-@click.pass_context
-def getJsonld(ctx, url, format, response):
-    L = getLogger()
-    doc = sonormal.getjsonld.downloadJson(url, try_jsrender=ctx.obj["render"])
-    if response:
-        logResponseInfo(doc["response"])
-    if format == "nquads":
-        print(pyld.jsonld.to_rdf(doc["document"], {"format": sonormal.MEDIA_NQUADS}))
-    else:
-        print(json.dumps(doc["document"], indent=2))
+    ctx.obj["show_response"] = response
+    ctx.obj["base"] = base
+    ctx.obj["profile"] = profile
+    ctx.obj["request_profile"] = request_profile
 
 
 def _getDocument(input, render=False, profile=None, requestProfile=None):
+    def _jsonldFromString(_src):
+        try:
+            return json.loads(_src)
+        except Exception as e:
+            L.warning("Unable to parse input as JSON-LD, trying HTML")
+        try:
+            options = {"base": doc["documentUrl"], "extractAllScripts": True}
+            return pyld.jsonld.load_html(_src, doc["documentUrl"], profile, options)
+        except Exception as e:
+            L.error("Unable to load JSON-LD")
+            L.error(e)
+        return None
+
     L = getLogger()
     doc = {
         "document": None,
@@ -118,9 +127,12 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
         "contentType": "",
         "response": {},
     }
-    if input == "-":
-        doc["document"] = json.load(sys.stdin)
+    if not sys.stdin.isatty():
+        _src = sys.stdin.read()
+        doc["document"] = _jsonldFromString(_src)
     else:
+        if input is None:
+            return doc
         prot = input[:4].lower()
         if prot in ["http"]:
             doc = sonormal.getjsonld.downloadJson(
@@ -130,41 +142,224 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
                 requestProfile=requestProfile,
             )
         else:
+            input = os.path.expanduser(input)
             if not os.path.exists(input):
                 L.error("Unable to open source: %s", input)
                 return
-            with open(input, "r").read() as src:
-                doc["document"] = json.load(src)
+            _src = None
+            with open(input, "r") as src:
+                _src = src.read()
+            doc["document"] = _jsonldFromString(_src)
     return doc
 
 
-@main.command("canon")
-@click.argument("input")
+@main.command("cache-clear")
 @click.pass_context
-def canonicalizeJsonld(ctx, input):
+def clearCache(ctx):
     L = getLogger()
-    doc = _getDocument(input, render=ctx.obj["render"])
+    for k in sonormal.DOCUMENT_CACHE:
+        L.info("Delete cache entry: %s", k)
+        sonormal.DOCUMENT_CACHE.delete(k)
+
+
+@main.command("cache-list")
+@click.pass_context
+def cacheList(ctx):
+    L = getLogger()
+    i = 0
+    for k in sonormal.DOCUMENT_CACHE:
+        #hack to get date added of items
+        sql = "SELECT store_time, access_time FROM Cache WHERE key=?"
+        _rows = sonormal.DOCUMENT_CACHE._sql(sql, (k, ))
+        ((t0, t1),) = _rows
+        print(f"{sonormal.utils.datetimeToJsonStr(sonormal.utils.datetimeFromSomething(t0))} {k}")
+        i += 1
+
+@main.command(
+    "get",
+    help="Retrieve JSON-LD from JSON-LD or HTML document from stdin, disk file, or URL",
+)
+@click.option("-e", "--expand", is_flag=True, help="Expand the graph")
+@click.argument("source")
+@click.pass_context
+def getJsonld(ctx, expand, source=None):
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if ctx.obj["show_response"]:
+        logResponseInfo(doc["response"])
+    options = {
+        "base": doc["documentUrl"],
+    }
+    if not ctx.obj["base"] is None:
+        L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
+        options["base"] = ctx.obj["base"]
+    if expand:
+        doc["document"] = pyld.jsonld.expand(doc["document"], options=options)
+    print(json.dumps(doc["document"], indent=2))
+
+
+@main.command("nquads", help="Output the JSON-LD from SOURCE in N-Quads format")
+@click.argument("source", required=False)
+@click.pass_context
+def toNquads(ctx, source=None):
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
         return
-    ndoc = sonormal.normalize.normalizeJsonld(doc["document"])
+    options = {"format": sonormal.MEDIA_NQUADS, "base": doc["documentUrl"]}
+    if not ctx.obj["base"] is None:
+        L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
+        options["base"] = ctx.obj["base"]
+    print(pyld.jsonld.to_rdf(doc["document"], options=options))
+
+
+@main.command(
+    "canon",
+    help="Normalize the JSON-LD from SOURCE by applying URDNA2015 and render as JSON-LD in canonical form as per RFC 8785",
+)
+@click.argument("source", required=False)
+@click.pass_context
+def canonicalizeJsonld(ctx, source=None):
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", source)
+        return
+    options = {"base": doc["documentUrl"]}
+    if not ctx.obj["base"] is None:
+        L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
+        options["base"] = ctx.obj["base"]
+    ndoc = sonormal.normalize.normalizeJsonld(doc["document"], options=options)
     cdoc = sonormal.normalize.canonicalizeJson(ndoc)
     print(cdoc)
 
 
-@main.command("frame")
-@click.argument("input")
+@main.command("frame", help="Apply frame to source (default = Dataset)")
+@click.argument("source", required=False)
+@click.option("-f", "--frame", default=None, help="Path to frame document")
 @click.pass_context
-def frameJsonld(ctx, input):
+def frameJsonld(ctx, source=None, frame=None):
     L = getLogger()
-    doc = _getDocument(input, render=ctx.obj["render"])
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
         return
-    ndoc = sonormal.normalize.normalizeJsonld(doc["document"])
-    cdoc = sonormal.normalize.frameSODataset(ndoc)
+    options = {"base": doc["documentUrl"]}
+    if not ctx.obj["base"] is None:
+        L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
+        options["base"] = ctx.obj["base"]
+    frame_doc = None
+    if frame is not None:
+        res = _getDocument(frame)
+        frame_doc = res.get("document", None)
+        if frame_doc is None:
+            L.warning("Could not load frame document %s", frame)
+    ndoc = sonormal.normalize.normalizeJsonld(doc["document"], options=options)
+    cdoc = sonormal.normalize.frameSODataset(ndoc, frame_doc=frame_doc)
     print(json.dumps(cdoc, indent=2))
 
+
+@main.command(
+    "identifiers",
+    help="Get document identifiers and optionally compute checksums for canonical form.",
+)
+@click.argument("source", required=False)
+@click.option("-c", "--checksums", is_flag=True, help="Compute checksums")
+@click.pass_context
+def datasetIdentifiers(ctx, source=None, checksums=False):
+    """
+    Extracts identifiers from JSON-Ld containing schema.org/Dataset
+
+    Args:
+        ctx: click context
+        source: stdin, file path, or URL for JSON-LD source
+        checksums: Calculate checksums on canonical form of JSON-LD
+
+    Returns:
+        Array of dict
+    """
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    options = {"base": doc["documentUrl"]}
+    if not ctx.obj["base"] is None:
+        L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
+        options["base"] = ctx.obj["base"]
+    ndoc = sonormal.normalize.normalizeJsonld(doc["document"], options=options)
+    cdoc = sonormal.normalize.frameSODataset(ndoc)
+    ids = sonormal.normalize.getDatasetsIdentifiers(cdoc)
+    if checksums:
+        ids[0]["hashes"], _ = sonormal.checksums.jsonChecksums(ndoc)
+    print(json.dumps(ids, indent=2))
+
+
+@main.command("compact", help="Compact the JSON-LD SOURCE")
+@click.argument("source", required=False)
+@click.option("-c", "--context", default=None, help="Context document to use")
+@click.pass_context
+def compactJsonld(ctx, source=None, context=None):
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    options = {"base": doc["documentUrl"]}
+    cdoc = sonormal.normalize.compactSODataset(doc["document"], options=options, context=context)
+    print(json.dumps(cdoc, indent=2))
+
+
+@main.command("play")
+@click.argument("source", required=False)
+@click.pass_context
+def jsonldPlayground(ctx, source=None):
+    raise NotImplementedError("Play is not implemented")
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    url = "https://hastebin.com/documents"
+    data = {"data": doc["document"]}
+    res = requests.post(url, data=data, timeout=5)
+    print(res.text)
 
 if __name__ == "__main__":
     sys.exit(main())

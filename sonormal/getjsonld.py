@@ -146,18 +146,18 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
         await page.setExtraHTTPHeaders(headers)
         page.on("request", startRequest)
         page.on("response", responseDone)
-        #__L.debug("PAGE GOTO")
+        __L.debug("PAGE GOTO")
         _response = await page.goto(url)
 
         # await page.waitForSelector('#Metadata')
         # Give the page 5 seconds for a jsonld to appear
-        #__L.debug("PAGE WAIT XPATH")
+        __L.debug("PAGE WAIT XPATH")
         await page.waitForXPath(
             f'//script[@type="{sonormal.MEDIA_JSONLD}"]', timeout=BROWSER_RENDER_TIMEOUT
         )
-        #__L.debug("PAGE WAIT CONTENT")
+        __L.debug("PAGE WAIT CONTENT")
         content = await page.content()
-        #__L.debug("PAGE LOADED")
+        __L.debug("PAGE LOADED")
 
         # Gather metadata about the request and responses
         response.request.headers = _response.request.headers

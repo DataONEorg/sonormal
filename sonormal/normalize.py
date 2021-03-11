@@ -112,9 +112,10 @@ def forceSODatasetLists(jdoc):
     return docs
 
 
-def frameSODataset(jdoc):
+def frameSODataset(jdoc, frame_doc=None):
     __L.debug("Framing")
-    frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
+    if frame_doc is None:
+        frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
     try:
         fdoc = pyld.jsonld.frame(jdoc, frame_doc)
         return pyld.jsonld.expand(fdoc)
@@ -123,12 +124,14 @@ def frameSODataset(jdoc):
     return []
 
 
-def compactSODataset(jdoc, options={}):
+def compactSODataset(jdoc, options={}, context=None):
     opts = {"base": sonormal.DEFAULT_BASE}
     opts.update(options)
-    context = copy.deepcopy(sonormal.SO_COMPACT_CONTEXT)
-    if options.get("base", None) is not None:
-        context["@context"].append({"@base":options["base"]})
+    if context is None:
+        context = copy.deepcopy(sonormal.SO_COMPACT_CONTEXT)
+        #Assume @base was set in the context, if provided
+        if options.get("base", None) is not None:
+            context["@context"].append({"@base":options["base"]})
     return pyld.jsonld.compact(jdoc, context, options=opts)
 
 

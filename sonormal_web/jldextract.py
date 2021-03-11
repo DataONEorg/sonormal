@@ -12,34 +12,17 @@ import sonormal.getjsonld
 import sonormal.normalize
 import sonormal.checksums
 
+__L = logging.getLogger("jldextract")
+
 jldex = flask.Blueprint("jldex", __name__, template_folder="templates/jldex")
 
-
-class objdict(dict):
-    def __getattr__(self, name):
-        if name in self:
-            return self[name]
-        else:
-            raise AttributeError("No such attribute: " + name)
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def __delattr__(self, name):
-        if name in self:
-            del self[name]
-        else:
-            raise AttributeError("No such attribute: " + name)
-
-
 def loadJsonLD(url):
-    _L = logging.getLogger("loadJsonLD")
     resp = requests.get(url)
     try:
         jsonld = json.loads(resp.content)
         return jsonld, resp
     except Exception as e:
-        _L.warning(e)
+        __L.warning(e)
     jsonld = pyld.jsonld.load_html(
         resp.content,
         resp.url,
@@ -49,47 +32,6 @@ def loadJsonLD(url):
     return jsonld, resp
 
 
-def responseSummary(resp):
-    def dtdsecs(t):
-        return t.seconds + t.microseconds / 1000000.0
-
-    rs = {"rows": []}
-    elapsed = 0.0
-    for r in resp.history:
-        row = {
-            "url": r.url,
-            "status_code": r.status_code,
-            "content_type": r.headers.get("Content-Type", "-"),
-            "last_modified": r.headers.get("Last-Modified", "-"),
-            "result": None,
-            "elapsed": dtdsecs(r.elapsed),
-        }
-        elapsed += dtdsecs(r.elapsed)
-
-        loc = r.headers.get("Location", None)
-        if loc is not None:
-            row["result"] = f"Location: {loc}"
-        else:
-            row["result"] = "<< body >>"
-        rs["rows"].append(row)
-    r = resp
-    row = {
-        "url": r.url,
-        "status_code": r.status_code,
-        "content_type": r.headers.get("Content-Type", "-"),
-        "last_modified": r.headers.get("Last-Modified", "-"),
-        "result": None,
-        "elapsed": dtdsecs(r.elapsed),
-    }
-    elapsed += dtdsecs(r.elapsed)
-    rs["elapsed"] = elapsed
-    loc = r.headers.get("Location", None)
-    if loc is not None:
-        row["result"] = f"Location: {loc}"
-    else:
-        row["result"] = "<< body >>"
-    rs["rows"].append(row)
-    return rs
 
 
 def jentrify(jbytes):
@@ -114,7 +56,7 @@ def jentrify(jbytes):
 def default():
     url = flask.request.args.get("url", None)
     force_lists = flask.request.args.get("lists", False)
-    data = objdict()
+    data = sonormal.ObjDict()
     errors = []
     data.url = None
     if not url is None:
@@ -136,7 +78,7 @@ def default():
             data.jsonld = sonormal.normalize.forceSODatasetLists(data.jsonld)
         data.html = jresp.text
         options = {"base": jresp.url}
-        data.jresp = responseSummary(jresp)
+        data.jresp = sonormal.getjsonld.responseSummary(jresp)
         try:
             data.jsonld_normalized = sonormal.normalize.normalizeJsonld(
                 data.jsonld, options=options
