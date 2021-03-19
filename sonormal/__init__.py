@@ -269,6 +269,7 @@ def cachingDocumentLoader(url, options={}):
         timeout=options.get("timeout"), allow_redirects=options.get("allow_redirects")
     )
     resp = loader(url, options=options)
+    # loader raises on error, so failed requests are not cached
     DOCUMENT_CACHE.set(url, resp, expire=DOCUMENT_CACHE_TIMEOUT)
     return resp
 
