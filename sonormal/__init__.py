@@ -13,7 +13,7 @@ __L = logging.getLogger("sonormal")
 # Media types
 MEDIA_NQUADS = "application/n-quads"
 MEDIA_JSONLD = "application/ld+json"
-MEDIA_JSON = "applcation/json"
+MEDIA_JSON = "application/json"
 MEDIA_HTML = "text/html"
 MEDIA_XHTML = "application/xml+xhtml"
 MEDIA_XML = "application/xml"
@@ -102,7 +102,7 @@ class RequestsSessionTrack(requests.Session):
         L.debug("Response [%s] from %s", resp.status_code, resp.request.url)
         loc = super().get_redirect_target(resp)
         if not loc is None:
-            L.info("Redirect target: %s", resp.status_code, loc)
+            L.info("Redirect target: %s %s", resp.status_code, loc)
         return loc
 
 

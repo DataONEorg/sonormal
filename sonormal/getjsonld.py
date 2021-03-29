@@ -103,8 +103,12 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
     def startRequest(request, **kwargs):
         nonlocal timers
         timers[request.url] = time.time()
+        __L.debug(str(request.url))
+        __L.debug(str(request.headers))
 
     def responseDone(response, **kwargs):
+        __L.debug("RESPONSE URL= %s", response.url)
+        __L.debug("RESPONSE HEADERS: %s", str(response.headers))
         t1 = time.time()
         nonlocal timers
         t0 = timers.get(response.url, t1)
@@ -151,10 +155,13 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
 
         # await page.waitForSelector('#Metadata')
         # Give the page 5 seconds for a jsonld to appear
-        __L.debug("PAGE WAIT XPATH")
-        await page.waitForXPath(
-            f'//script[@type="{sonormal.MEDIA_JSONLD}"]', timeout=BROWSER_RENDER_TIMEOUT
-        )
+        try:
+            __L.debug("PAGE WAIT XPATH")
+            await page.waitForXPath(
+                f'//script[@type="{sonormal.MEDIA_JSONLD}"]', timeout=BROWSER_RENDER_TIMEOUT
+            )
+        except Exception as e:
+            __L.error(e)
         __L.debug("PAGE WAIT CONTENT")
         content = await page.content()
         __L.debug("PAGE LOADED")

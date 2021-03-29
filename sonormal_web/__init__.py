@@ -10,8 +10,6 @@ import sonormal.getjsonld
 
 from . import jldextract
 
-
-
 def create_app(test_config=None):
     app = flask.Flask(__name__, instance_relative_config=True, static_url_path="")
     flask_cors.CORS(app)
@@ -115,7 +113,8 @@ def create_app(test_config=None):
         do_normalize = flask.request.args.get("n", False)
         do_frame = flask.request.args.get("f", False)
         logging.debug("URL = %s", source_url)
-        jsonld, _ = sonormal.getjsonld.downloadJson(source_url)
+        doc = sonormal.getjsonld.downloadJson(source_url)
+        jsonld = doc["document"]
         if do_normalize:
             jsonld = sonormal.normalize.normalizeJsonld(jsonld)
         if do_frame:
@@ -136,7 +135,9 @@ def create_app(test_config=None):
             flask.abort(404)
         do_normalize = flask.request.args.get("n", False)
         logging.debug("URL = %s", source_url)
-        jsonld, responses = sonormal.getjsonld.downloadJson(source_url)
+        doc = sonormal.getjsonld.downloadJson(source_url)
+        jsonld = doc["document"]
+        responses = doc["response"]
         if do_normalize:
             opts = {"base": responses.url}
             jsonld = sonormal.normalize.normalizeJsonld(jsonld, options=opts)

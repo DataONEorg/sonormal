@@ -73,7 +73,9 @@ def default():
         #    "Accept":"application/ld+json"
         #}
         rheaders = {}
-        data.jsonld, jresp = sonormal.getjsonld.downloadJson(url, headers=rheaders)
+        doc = sonormal.getjsonld.downloadJson(url, headers=rheaders)
+        data.jsonld = doc["document"]
+        jresp = doc["response"]
         if force_lists:
             data.jsonld = sonormal.normalize.forceSODatasetLists(data.jsonld)
         data.html = jresp.text
