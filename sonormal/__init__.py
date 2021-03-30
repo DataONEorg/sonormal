@@ -32,7 +32,7 @@ SO_PROPERTY_ID = f"{SO_}propertyID"
 SO_COMPACT_CONTEXT = {"@context": ["https://schema.org/", {"id": "id", "type": "type"}]}
 
 SO_DATASET_FRAME = {
-    "@context": "https://schema.org/",
+    "@context": {"@vocab":"https://schema.org/"},
     "@type": "Dataset",
     "identifier": {},
     "creator": {},
@@ -274,9 +274,10 @@ def cachingDocumentLoader(url, options={}):
     return resp
 
 
-def installDocumentLoader():
+def installDocumentLoader(expire_existing=False):
     __L.info("Installing cachingDocumentLoader")
     __L.info("FORCE_SO_VERSION: %s", FORCE_SO_VERSION)
     pyld.jsonld.set_document_loader(cachingDocumentLoader)
     global DOCUMENT_CACHE
-    DOCUMENT_CACHE.expire()
+    if expire_existing:
+        DOCUMENT_CACHE.expire()
