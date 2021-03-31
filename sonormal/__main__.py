@@ -82,17 +82,18 @@ def logResponseInfo(resp):
 
 @click.group()
 @click.pass_context
-@click.option("-W", "--webpage", is_flag=True, help="Render SPA page")
-@click.option("-r", "--response", is_flag=True, help="Show response information")
 @click.option("-b", "--base", default=None, help="Base URI")
 @click.option("-p", "--profile", default=None, help="JSON-LD Profile")
 @click.option("-P", "--request-profile", default=None, help="JSON-LD Request Profile")
+@click.option("-r", "--response", is_flag=True, help="Show response information")
+@click.option("-R", "--relaxed-json", is_flag=True, help="Relax strict JSON deserialization")
+@click.option("-W", "--webpage", is_flag=True, help="Render SPA page")
 @click.option(
     "--soprod",
     is_flag=True,
     help="Use schema.org production context instead of v12 https",
 )
-def main(ctx, webpage, response, base, profile, request_profile, soprod):
+def main(ctx, webpage, response, base, profile, request_profile, soprod, relaxed_json):
     ctx.ensure_object(dict)
     logging.config.dictConfig(logging_config)
     if soprod:
@@ -103,16 +104,17 @@ def main(ctx, webpage, response, base, profile, request_profile, soprod):
     ctx.obj["base"] = base
     ctx.obj["profile"] = profile
     ctx.obj["request_profile"] = request_profile
+    ctx.obj["json_parse_strict"] = not relaxed_json
 
 
-def _getDocument(input, render=False, profile=None, requestProfile=None):
-    def _jsonldFromString(_src):
+def _getDocument(input, render=False, profile=None, requestProfile=None, json_parse_strict=True):
+    def _jsonldFromString(_src, _json_parse_strict=True):
         try:
-            return json.loads(_src)
+            return json.loads(_src, strict=_json_parse_strict)
         except Exception as e:
             L.warning("Unable to parse input as JSON-LD, trying HTML")
         try:
-            options = {"base": doc["documentUrl"], "extractAllScripts": True}
+            options = {"base": doc["documentUrl"], "extractAllScripts": True, "json_parse_strict": _json_parse_strict}
             return pyld.jsonld.load_html(_src, doc["documentUrl"], profile, options)
         except Exception as e:
             L.error("Unable to load JSON-LD")
@@ -129,7 +131,7 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
     }
     if not sys.stdin.isatty():
         _src = sys.stdin.read()
-        doc["document"] = _jsonldFromString(_src)
+        doc["document"] = _jsonldFromString(_src, _json_parse_strict=json_parse_strict)
     else:
         if input is None:
             return doc
@@ -140,6 +142,7 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
                 try_jsrender=render,
                 profile=profile,
                 requestProfile=requestProfile,
+                json_parse_strict=json_parse_strict
             )
         else:
             input = os.path.expanduser(input)
@@ -149,7 +152,7 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
             _src = None
             with open(input, "r") as src:
                 _src = src.read()
-            doc["document"] = _jsonldFromString(_src)
+            doc["document"] = _jsonldFromString(_src, _json_parse_strict=json_parse_strict)
     return doc
 
 
@@ -186,6 +189,7 @@ def getJsonld(ctx, expand, source=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if ctx.obj["show_response"]:
         logResponseInfo(doc["response"])
@@ -210,6 +214,7 @@ def toNquads(ctx, source=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
@@ -234,6 +239,7 @@ def canonicalizeJsonld(ctx, source=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", source)
@@ -258,6 +264,7 @@ def frameJsonld(ctx, source=None, frame=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
@@ -302,6 +309,7 @@ def datasetIdentifiers(ctx, source=None, checksums=False):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
@@ -329,6 +337,7 @@ def compactJsonld(ctx, source=None, context=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
@@ -349,6 +358,7 @@ def jsonldPlayground(ctx, source=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)

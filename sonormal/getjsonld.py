@@ -86,7 +86,9 @@ def responseSummary(resp):
 
 
 # TODO: set request headers in rendered request
-async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=None):
+async def downloadJsonRendered(
+    url, headers={}, profile=None, requestProfile=None, json_parse_strict=True
+):
     __L.debug("Loading and rendering %s", url)
     # TODO: Handle response link headers. This should not be necessary here unless
     # using this method as the primary mechanism for making the request, which is
@@ -144,8 +146,10 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
     try:
         page = await browser.newPage()
         if requestProfile is not None:
-            accept = headers.get('Accept', sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
-            headers["Accept"] = f"application/ld+json;profile={requestProfile}, {accept}"
+            accept = headers.get("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
+            headers[
+                "Accept"
+            ] = f"application/ld+json;profile={requestProfile}, {accept}"
 
         await page.setExtraHTTPHeaders(headers)
         page.on("request", startRequest)
@@ -158,7 +162,8 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
         try:
             __L.debug("PAGE WAIT XPATH")
             await page.waitForXPath(
-                f'//script[@type="{sonormal.MEDIA_JSONLD}"]', timeout=BROWSER_RENDER_TIMEOUT
+                f'//script[@type="{sonormal.MEDIA_JSONLD}"]',
+                timeout=BROWSER_RENDER_TIMEOUT,
             )
         except Exception as e:
             __L.error(e)
@@ -198,7 +203,7 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
             content,
             doc["documentUrl"],
             profile=profile,
-            options={"extractAllScripts": True},
+            options={"extractAllScripts": True, "json_parse_strict": json_parse_strict},
         )
         doc["document"] = jsonld
         doc["response"] = response
@@ -210,12 +215,20 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
     return doc
 
 
-def downloadJson(url, headers={}, profile=None, requestProfile=None, try_jsrender=True):
+def downloadJson(
+    url,
+    headers={},
+    profile=None,
+    requestProfile=None,
+    try_jsrender=True,
+    json_parse_strict=True,
+):
     headers.setdefault("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
     try:
         options = {
             "headers": headers,
             "documentLoader": pyld.jsonld.get_document_loader(),
+            "json_parse_strict": json_parse_strict,
         }
         response_doc = pyld.jsonld.load_document(
             url, options, profile=profile, requestProfile=requestProfile
@@ -232,13 +245,24 @@ def downloadJson(url, headers={}, profile=None, requestProfile=None, try_jsrende
         # try loading and rendering the page
         response_doc = asyncio.run(
             downloadJsonRendered(
-                url, headers=headers, profile=profile, requestProfile=requestProfile
+                url,
+                headers=headers,
+                profile=profile,
+                requestProfile=requestProfile,
+                json_parse_strict=json_parse_strict,
             )
         )
     return response_doc
 
 
-async def downloadJsonAsync(url, headers={}, try_jsrender=True):
+async def downloadJsonAsync(
+    url,
+    headers={},
+    profile=None,
+    requestProfile=None,
+    try_jsrender=True,
+    json_parse_strict=True,
+):
     """
     Not really async, just running without creating an event loop.
     Args:
@@ -254,8 +278,11 @@ async def downloadJsonAsync(url, headers={}, try_jsrender=True):
         options = {
             "headers": headers,
             "documentLoader": pyld.jsonld.get_document_loader(),
+            "json_parse_strict": json_parse_strict,
         }
-        response_doc = pyld.jsonld.load_document(url, options)
+        response_doc = pyld.jsonld.load_document(
+            url, options, profile=profile, requestProfile=requestProfile
+        )
         return response_doc
     except requests.Timeout as e:
         __L.error("Request to %s timed out", url)
@@ -266,5 +293,11 @@ async def downloadJsonAsync(url, headers={}, try_jsrender=True):
             raise (e)
         # Empty array?
         # try loading and rendering the page
-        response_doc = await downloadJsonRendered(url, headers=headers)
+        response_doc = await downloadJsonRendered(
+            url,
+            headers=headers,
+            profile=profile,
+            requestProfile=requestProfile,
+            json_parse_strict=json_parse_strict,
+        )
     return response_doc
