@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sonormal"
-version = "0.2.3"
+version = "0.3.0"
 description = "Schema.org normalization tool"
 authors = ["datadavev <datadavev@users.noreply.github.com>"]
 license = "MIT"

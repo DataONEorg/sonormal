@@ -8,9 +8,11 @@ This library and tool is focussed on supporting Schema.org harvesting for the Da
 
 ## Operation
 
+```
 Usage: jld [OPTIONS] COMMAND [ARGS]...
 
-```
+  Retrieve and process JSON-LD.
+
 Options:
   -b, --base TEXT             Base URI
   -p, --profile TEXT          JSON-LD Profile
@@ -23,12 +25,13 @@ Options:
 
 Commands:
   cache        Cache management, list or purge
-  canon        Normalize the JSON-LD from SOURCE by applying URDNA2015 and ...
+  canon        Normalize and render canonical form
   compact      Compact the JSON-LD SOURCE
-  frame        Apply frame to source (default = Dataset)
-  get          Retrieve JSON-LD from JSON-LD or HTML document from stdin, ...
-  identifiers  Get document identifiers and optionally compute checksums for...
-  nquads       Output the JSON-LD from SOURCE in N-Quads format
+  frame        Apply frame to source
+  get          Retrieve JSON-LD
+  identifiers  Extract Dataset identifiers
+  nquads       Transform JSON-LD to N-Quads
+  play         Load in JSON-LD Playground
 ```
 
 `cache` lists entries in the local cache (in folder `~/.local/sonormal/cache`) and optionally purges entries.
@@ -136,6 +139,17 @@ jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" 
   }
 ]
 ```
+
+Open the canonical form of the BCO-DMO dataset `https://www.bco-dmo.org/dataset/839373` in [JSON-LD Playground](https://json-ld.org/playground/):
+
+```
+jld get "https://www.bco-dmo.org/dataset/839373" | jld canon | jld play -B
+New public gist created at: 
+  https://gist.github.com/datadavev/4f3cad1a104263bcf1c1bb96723911fc
+Link to JSON-LD playground:
+  https://json-ld.org/playground/#startTab=tab-expanded&json-ld=https%3A%2F%2Fgist.githubusercontent.com%2Fdatadavev%2F4f3cad1a104263bcf1c1bb96723911fc%2Fraw
+```
+
 
 ## Installation
 

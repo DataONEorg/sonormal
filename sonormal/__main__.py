@@ -417,13 +417,13 @@ def jsonldPlayground(ctx, open_browser, source=None):
         print(f"Could not create gh gist: \n{stdout_data}")
         return
     response = requests.get(res)
-    print(f"New public gist created at: {response.url}")
+    print(f"New public gist created at:\n  {response.url}")
     url = response.url.replace("https://gist.github.com/", "https://gist.githubusercontent.com/",1)
     url = url + "/raw"
     #print(url)
     PG = "https://json-ld.org/playground/#startTab=tab-expanded&json-ld="
     url = PG + urllib.parse.quote(url, safe='')
-    print(f"Link to JSON-LD playground:\n{url}")
+    print(f"Link to JSON-LD playground:\n  {url}")
     if open_browser:
         webbrowser.open(url, new=2)
 
