@@ -4,6 +4,8 @@
 
 Included is a command line tool `jld` for retrieving and extracting JSON-LD from a web page or other resource and performing various operations on JSON-LD.
 
+This library and tool is focussed on supporting Schema.org harvesting for the DataONE infrastructure.
+
 ## Operation
 
 Usage: jld [OPTIONS] COMMAND [ARGS]...
