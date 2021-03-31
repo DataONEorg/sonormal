@@ -136,3 +136,25 @@ jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" 
 ]
 ```
 
+## Installation
+
+Install using [`poetry`](https://python-poetry.org/). For example:
+
+```
+git clone https://github.com/datadavev/sonormal.git
+cd sonormal
+poetry install
+```
+Then run using:
+```
+poetry run jld
+```
+
+Alternatively, install into a separately created virtual environment:
+```
+poetry install
+```
+Then run like:
+```
+jld
+```
