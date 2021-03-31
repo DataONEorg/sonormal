@@ -8,6 +8,9 @@ import logging
 import logging.config
 import json
 import click
+import urllib
+import subprocess
+import webbrowser
 import requests
 import pyld.jsonld
 import sonormal
@@ -86,7 +89,9 @@ def logResponseInfo(resp):
 @click.option("-p", "--profile", default=None, help="JSON-LD Profile")
 @click.option("-P", "--request-profile", default=None, help="JSON-LD Request Profile")
 @click.option("-r", "--response", is_flag=True, help="Show response information")
-@click.option("-R", "--relaxed-json", is_flag=True, help="Relax strict JSON deserialization")
+@click.option(
+    "-R", "--relaxed-json", is_flag=True, help="Relax strict JSON deserialization"
+)
 @click.option("-W", "--webpage", is_flag=True, help="Render SPA page")
 @click.option(
     "--soprod",
@@ -94,6 +99,7 @@ def logResponseInfo(resp):
     help="Use schema.org production context instead of v12 https",
 )
 def main(ctx, webpage, response, base, profile, request_profile, soprod, relaxed_json):
+    """Retrieve and process JSON-LD."""
     ctx.ensure_object(dict)
     logging.config.dictConfig(logging_config)
     if soprod:
@@ -107,14 +113,20 @@ def main(ctx, webpage, response, base, profile, request_profile, soprod, relaxed
     ctx.obj["json_parse_strict"] = not relaxed_json
 
 
-def _getDocument(input, render=False, profile=None, requestProfile=None, json_parse_strict=True):
+def _getDocument(
+    input, render=False, profile=None, requestProfile=None, json_parse_strict=True
+):
     def _jsonldFromString(_src, _json_parse_strict=True):
         try:
             return json.loads(_src, strict=_json_parse_strict)
         except Exception as e:
             L.warning("Unable to parse input as JSON-LD, trying HTML")
         try:
-            options = {"base": doc["documentUrl"], "extractAllScripts": True, "json_parse_strict": _json_parse_strict}
+            options = {
+                "base": doc["documentUrl"],
+                "extractAllScripts": True,
+                "json_parse_strict": _json_parse_strict,
+            }
             return pyld.jsonld.load_html(_src, doc["documentUrl"], profile, options)
         except Exception as e:
             L.error("Unable to load JSON-LD")
@@ -142,7 +154,7 @@ def _getDocument(input, render=False, profile=None, requestProfile=None, json_pa
                 try_jsrender=render,
                 profile=profile,
                 requestProfile=requestProfile,
-                json_parse_strict=json_parse_strict
+                json_parse_strict=json_parse_strict,
             )
         else:
             input = os.path.expanduser(input)
@@ -152,14 +164,18 @@ def _getDocument(input, render=False, profile=None, requestProfile=None, json_pa
             _src = None
             with open(input, "r") as src:
                 _src = src.read()
-            doc["document"] = _jsonldFromString(_src, _json_parse_strict=json_parse_strict)
+            doc["document"] = _jsonldFromString(
+                _src, _json_parse_strict=json_parse_strict
+            )
     return doc
 
 
-@main.command("cache", help="Cache management, list or purge")
+@main.command("cache", short_help="Cache management, list or purge")
 @click.option("-p", "--purge", is_flag=True, help="Purge the cache")
 @click.pass_context
 def cacheList(ctx, purge):
+    '''Manage the downloaded document cache (~/.local/sonormal/cache/)
+    '''
     L = getLogger()
     if purge:
         for k in sonormal.DOCUMENT_CACHE:
@@ -168,21 +184,29 @@ def cacheList(ctx, purge):
         return
     i = 0
     for k in sonormal.DOCUMENT_CACHE:
-        #hack to get date added of items
+        # hack to get date added of items
         sql = "SELECT store_time, access_time FROM Cache WHERE key=?"
-        _rows = sonormal.DOCUMENT_CACHE._sql(sql, (k, ))
+        _rows = sonormal.DOCUMENT_CACHE._sql(sql, (k,))
         ((t0, t1),) = _rows
-        print(f"{sonormal.utils.datetimeToJsonStr(sonormal.utils.datetimeFromSomething(t0))} {k}")
+        print(
+            f"{sonormal.utils.datetimeToJsonStr(sonormal.utils.datetimeFromSomething(t0))} {k}"
+        )
         i += 1
+
 
 @main.command(
     "get",
-    help="Retrieve JSON-LD from JSON-LD or HTML document from stdin, disk file, or URL",
+    short_help="Retrieve JSON-LD",
 )
 @click.option("-e", "--expand", is_flag=True, help="Expand the graph")
 @click.argument("source")
 @click.pass_context
 def getJsonld(ctx, expand, source=None):
+    '''Retrieve JSON-LD from JSON-LD or HTML document from stdin, disk file, or URL. 
+
+    Downloaded content is cached to avoid repeated download when performing
+    multiple operations on the same document.
+    '''
     L = getLogger()
     doc = _getDocument(
         source,
@@ -204,10 +228,12 @@ def getJsonld(ctx, expand, source=None):
     print(json.dumps(doc["document"], indent=2))
 
 
-@main.command("nquads", help="Output the JSON-LD from SOURCE in N-Quads format")
+@main.command("nquads", short_help="Transform JSON-LD to N-Quads")
 @click.argument("source", required=False)
 @click.pass_context
 def toNquads(ctx, source=None):
+    '''Output the JSON-LD from SOURCE in N-Quads format
+    '''
     L = getLogger()
     doc = _getDocument(
         source,
@@ -228,11 +254,14 @@ def toNquads(ctx, source=None):
 
 @main.command(
     "canon",
-    help="Normalize the JSON-LD from SOURCE by applying URDNA2015 and render as JSON-LD in canonical form as per RFC 8785",
+    short_help="Normalize and render canonical form",
 )
 @click.argument("source", required=False)
 @click.pass_context
 def canonicalizeJsonld(ctx, source=None):
+    '''Normalize the JSON-LD from SOURCE by applying URDNA2015 and 
+    render as JSON-LD in canonical form as per RFC 8785
+    '''
     L = getLogger()
     doc = _getDocument(
         source,
@@ -253,11 +282,15 @@ def canonicalizeJsonld(ctx, source=None):
     print(cdoc)
 
 
-@main.command("frame", help="Apply frame to source (default = Dataset)")
+@main.command("frame", short_help="Apply frame to source")
 @click.argument("source", required=False)
 @click.option("-f", "--frame", default=None, help="Path to frame document")
 @click.pass_context
 def frameJsonld(ctx, source=None, frame=None):
+    '''Apply frame to SOURCE using JSON-LD framing. 
+
+    Default frame is SO_DATASET_FRAME in __init__.py
+    '''
     L = getLogger()
     doc = _getDocument(
         source,
@@ -286,7 +319,7 @@ def frameJsonld(ctx, source=None, frame=None):
 
 @main.command(
     "identifiers",
-    help="Get document identifiers and optionally compute checksums for canonical form.",
+    short_help="Extract Dataset identifiers",
 )
 @click.argument("source", required=False)
 @click.option("-c", "--checksums", is_flag=True, help="Compute checksums")
@@ -294,6 +327,7 @@ def frameJsonld(ctx, source=None, frame=None):
 def datasetIdentifiers(ctx, source=None, checksums=False):
     """
     Extracts identifiers from JSON-Ld containing schema.org/Dataset
+    \f
 
     Args:
         ctx: click context
@@ -326,11 +360,15 @@ def datasetIdentifiers(ctx, source=None, checksums=False):
     print(json.dumps(ids, indent=2))
 
 
-@main.command("compact", help="Compact the JSON-LD SOURCE")
+@main.command("compact", short_help="Compact the JSON-LD SOURCE")
 @click.argument("source", required=False)
 @click.option("-c", "--context", default=None, help="Context document to use")
 @click.pass_context
 def compactJsonld(ctx, source=None, context=None):
+    '''Apply JSON-LD compacting algorithm to SOURCE.
+
+    Default context = {"@context": ["https://schema.org/", {"id": "id", "type": "type"}]}
+    '''
     L = getLogger()
     doc = _getDocument(
         source,
@@ -343,15 +381,23 @@ def compactJsonld(ctx, source=None, context=None):
         L.error("No document loaded from %s", input)
         return
     options = {"base": doc["documentUrl"]}
-    cdoc = sonormal.normalize.compactSODataset(doc["document"], options=options, context=context)
+    cdoc = sonormal.normalize.compactSODataset(
+        doc["document"], options=options, context=context
+    )
     print(json.dumps(cdoc, indent=2))
 
 
-@main.command("play")
+@main.command("play", short_help="Load in JSON-LD Playground")
+@click.option("-B", "--browser", "open_browser", is_flag=True, help="Open playground in browser")
 @click.argument("source", required=False)
 @click.pass_context
-def jsonldPlayground(ctx, source=None):
-    raise NotImplementedError("Play is not implemented")
+def jsonldPlayground(ctx, open_browser, source=None):
+    '''Creates a public Github Gist from SOURCE and loads to JSON-LD Playground.
+
+    Requires the "gh" command is available and authenticated.
+    '''
+    import subprocess
+
     L = getLogger()
     doc = _getDocument(
         source,
@@ -363,10 +409,24 @@ def jsonldPlayground(ctx, source=None):
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
         return
-    url = "https://hastebin.com/documents"
-    data = {"data": doc["document"]}
-    res = requests.post(url, data=data, timeout=5)
-    print(res.text)
+    cmd = ["gh","gist","create", "-p"]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout_data, stderr_data = p.communicate(input=json.dumps(doc["document"], indent=2).encode("UTF-8"))
+    res = stdout_data.decode().strip()
+    if not res.startswith("https://"):
+        print(f"Could not create gh gist: \n{stdout_data}")
+        return
+    response = requests.get(res)
+    print(f"New public gist created at: {response.url}")
+    url = response.url.replace("https://gist.github.com/", "https://gist.githubusercontent.com/",1)
+    url = url + "/raw"
+    #print(url)
+    PG = "https://json-ld.org/playground/#startTab=tab-expanded&json-ld="
+    url = PG + urllib.parse.quote(url, safe='')
+    print(f"Link to JSON-LD playground:\n{url}")
+    if open_browser:
+        webbrowser.open(url, new=2)
+
 
 if __name__ == "__main__":
     sys.exit(main())

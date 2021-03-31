@@ -12,11 +12,12 @@ Usage: jld [OPTIONS] COMMAND [ARGS]...
 
 ```
 Options:
-  -W, --webpage               Render SPA page
-  -r, --response              Show response information
   -b, --base TEXT             Base URI
   -p, --profile TEXT          JSON-LD Profile
   -P, --request-profile TEXT  JSON-LD Request Profile
+  -r, --response              Show response information
+  -R, --relaxed-json          Relax strict JSON deserialization
+  -W, --webpage               Render SPA page
   --soprod                    Use schema.org production context instead of v12 https
   --help                      Show this message and exit.
 
