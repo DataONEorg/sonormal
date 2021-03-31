@@ -926,8 +926,8 @@ requests = ["requests"]
 [package.source]
 type = "git"
 url = "https://github.com/datadavev/pyld.git"
-reference = "develop"
-resolved_reference = "4b46272629334c77f9ac9d4a9e770dcbaf1ddbce"
+reference = "2.0.4-dev_ddv-0.1"
+resolved_reference = "db1bb4a80171aa621c7f2b1bdadb74e41351360e"
 
 [[package]]
 name = "pylint"
@@ -1274,7 +1274,7 @@ docs = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "c7704822ef4796ee094ab143246f01f9e5b24b6aa49eb2b6768d28502ba731ce"
+content-hash = "63b52fb76987b960d95b355bc313f2131779ec1f9cab2a6bbc5a1e9ffe3aacbc"
 
 [metadata.files]
 anyio = [
