@@ -153,19 +153,16 @@ def _getDocument(input, render=False, profile=None, requestProfile=None):
     return doc
 
 
-@main.command("cache-clear")
+@main.command("cache", help="Cache management, list or purge")
+@click.option("-p", "--purge", is_flag=True, help="Purge the cache")
 @click.pass_context
-def clearCache(ctx):
+def cacheList(ctx, purge):
     L = getLogger()
-    for k in sonormal.DOCUMENT_CACHE:
-        L.info("Delete cache entry: %s", k)
-        sonormal.DOCUMENT_CACHE.delete(k)
-
-
-@main.command("cache-list")
-@click.pass_context
-def cacheList(ctx):
-    L = getLogger()
+    if purge:
+        for k in sonormal.DOCUMENT_CACHE:
+            L.info("Delete cache entry: %s", k)
+            sonormal.DOCUMENT_CACHE.delete(k)
+        return
     i = 0
     for k in sonormal.DOCUMENT_CACHE:
         #hack to get date added of items
