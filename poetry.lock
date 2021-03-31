@@ -927,7 +927,7 @@ requests = ["requests"]
 type = "git"
 url = "https://github.com/datadavev/pyld.git"
 reference = "develop"
-resolved_reference = "dfcfba4ef491bf48d6b0e9c04b9b5ba9dbb83ee3"
+resolved_reference = "4b46272629334c77f9ac9d4a9e770dcbaf1ddbce"
 
 [[package]]
 name = "pylint"

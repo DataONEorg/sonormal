@@ -227,7 +227,7 @@ def requests_document_loader_history(secure=False, **kwargs):
             # Do not parse JSON here. It needs to be done in load_document to handle the
             # situation where JSON-LD needs to be extracted from a HTML response.
             # doc['document'] = response.json()
-            doc["document"] = response.text
+            doc["document"] = response.content.decode()
             doc["response"] = response
             return doc
         except pyld.jsonld.JsonLdError as e:
