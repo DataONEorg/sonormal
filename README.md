@@ -173,3 +173,5 @@ Then run like:
 ```
 jld
 ```
+
+Note that the `play` command for uploading to the [JSON-LD Playground](https://json-ld.org/playground/) requires that the GitHub [command line tool `gh`](https://github.com/cli/cli) is available on the path, and that you have authenticated the tool.
