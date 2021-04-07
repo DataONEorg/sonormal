@@ -428,5 +428,36 @@ def jsonldPlayground(ctx, open_browser, source=None):
         webbrowser.open(url, new=2)
 
 
+@main.command("valid", short_help="Validate with SHACL")
+@click.pass_context
+def shaclValidate(ctx, source=None, shacl=None):
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+        json_parse_strict=ctx.obj.get("json_parse_strict", True),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    if shacl is None:
+        shacl = "https://raw.githubusercontent.com/ESIPFed/science-on-schema.org/master/validation/shapegraphs/soso_common_v1.2.2.ttl"
+    shacl_src = requests.get(shacl).text
+    service_url = "https://ti921zid2b.execute-api.us-east-1.amazonaws.com/dev/verify"
+    data = {
+        "fmt":"json-ld",
+        "infer": False,        
+    }
+    files = {
+        "sg": ("sg.ttl", shacl_src, "application/turtle"),
+        "dg": ("dg.jsonld", json.dumps(doc["document"], indent=2), "application/ld+json"),
+    }
+    response = requests.post(service_url, files=files, data=data)
+    print(response.text)
+
+
+
 if __name__ == "__main__":
     sys.exit(main())
