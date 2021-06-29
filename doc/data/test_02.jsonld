@@ -1,0 +1,25 @@
+{
+    "@context": {
+        "@vocab":"https://schema.org/"
+    },
+    "@type":"Dataset",
+    "description":"No remote context, vocab https://schema.org/, creator 03, 02, 01, using @list",
+    "creator": [
+        {
+            "@list": [
+                {
+                    "@type": "Person",
+                    "name": "creator_03"
+                },
+                {
+                    "@type": "Person",
+                    "name": "creator_02"
+                },
+                {
+                    "@type": "Person",
+                    "name": "creator_01"
+                }                
+            ]
+        }
+    ]
+}
