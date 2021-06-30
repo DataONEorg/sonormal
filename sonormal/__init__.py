@@ -54,7 +54,7 @@ REQUEST_TIMEOUT = 30  # seconds
 
 # Default content type when not provided in server response
 # pyld defaults to application/octet-stream, which makes sense
-# but means sloppy HTML responses are not handled in load_document()
+# but means sloppy HTML responses are not handled i4n load_document()
 DEFAULT_RESPONSE_CONTENT_TYPE = MEDIA_HTML
 
 # Content negotiation support is pretty bad. This *should* work, but will

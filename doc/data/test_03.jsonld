@@ -1,0 +1,19 @@
+{
+    "@context": "https://schema.org/",
+    "@type":"Dataset",
+    "description":"Remote context, creator 03, 02, 01",
+    "creator": [
+        {
+            "@type": "Person",
+            "name": "creator_03"
+        },
+        {
+            "@type": "Person",
+            "name": "creator_02"
+        },
+        {
+            "@type": "Person",
+            "name": "creator_01"
+        }                
+    ]
+}
