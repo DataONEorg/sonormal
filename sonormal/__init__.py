@@ -48,17 +48,17 @@ SOL_CONTEXT = {}
 
 
 # Common schema.org things
-SO_ = "https://schema.org/"
+SO_ = "http://schema.org/"
 SO_DATASET = f"{SO_}Dataset"
 SO_IDENTIFIER = f"{SO_}identifier"
 SO_VALUE = f"{SO_}value"
 SO_URL = f"{SO_}url"
 SO_PROPERTY_ID = f"{SO_}propertyID"
 
-SO_COMPACT_CONTEXT = {"@context": ["https://schema.org/", {"id": "id", "type": "type"}]}
+SO_COMPACT_CONTEXT = {"@context": ["http://schema.org/", {"id": "id", "type": "type"}]}
 
 SO_DATASET_FRAME = {
-    "@context": {"@vocab": "https://schema.org/"},
+    "@context": "https://schema.org/",
     "@type": "Dataset",
     "identifier": {},
     "creator": {},
@@ -234,7 +234,7 @@ def isHttpsSchemaOrg(exp_doc) -> bool:
     return False
 
 
-def switchToHttpSchemaOrg(doc):
+def switchToHttpSchemaOrg(doc, options={}):
     """Convert SO JSONLD namespace from https://schema.org/ to http://schema.org/
 
     The document is expanded and compacted with only schema.org properties
@@ -247,20 +247,21 @@ def switchToHttpSchemaOrg(doc):
         document: JSON-LD document using http://schema.org/ namespace
     """
     # First expand the document
-    expanded = pyld.jsonld.expand(doc)
+    # options may include a default base for the document
+    expanded = pyld.jsonld.expand(doc, options)
 
     # Determine which context to apply
     is_https = isHttpsSchemaOrg(expanded)
     context_map = SO_CONTEXT
     if is_https:
         context_map = SOS_CONTEXT
-    options = {
+    opts = {
         "documentLoader": localRequestsDocumentLoader(context_map=context_map),
     }
 
     # Compact the schema.org elements of the document
     context = {"@context": "https://schema.org/"}
-    return pyld.jsonld.compact(expanded, context, options)
+    return pyld.jsonld.compact(expanded, context, opts)
 
 
 def addSchemaOrgListContainer(doc):
@@ -277,6 +278,40 @@ def addSchemaOrgListContainer(doc):
     }
     expanded = pyld.jsonld.expand(doc, options)
     return expanded
+
+
+def sosoNormalize(doc):
+    """
+    Return JSONLD document expanded and using SOSO recommendations
+
+    Args:
+        doc: JSONLD
+
+    Returns:
+        expanded JSONLD with http://schema.org/ and @list added to identifier and creator
+    """
+    newdoc = switchToHttpSchemaOrg(doc)
+    sosodoc = addSchemaOrgListContainer(newdoc)
+    return sosodoc
+
+
+def sosoDatasetFrame(expanded, options={}):
+    """
+    Return a SOSO JSONLD document framed from a Dataset perspective
+
+    Args:
+        expanded:
+
+    Returns:
+
+    """
+    frame_doc = copy.deepcopy(SO_DATASET_FRAME)
+    opts = {
+        "documentLoader": localRequestsDocumentLoader(context_map=SOL_CONTEXT),
+    }
+    opts.update(options)
+    fdoc = pyld.jsonld.frame(expanded, frame_doc, options=opts)
+    return fdoc
 
 
 class ObjDict(dict):
