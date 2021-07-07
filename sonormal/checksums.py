@@ -83,7 +83,7 @@ def computeChecksumsFLO(flo, sha256=True, sha1=True, md5=True):
     if sha1:
         hashes["sha1"] = hsha1.hexdigest()
     if md5:
-        hashes["md5"] = md5.hexdigest()
+        hashes["md5"] = hmd5.hexdigest()
     return hashes
 
 
