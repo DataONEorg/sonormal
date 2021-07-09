@@ -24,8 +24,8 @@ MEDIA_XML = "application/xml"
 DEFAULT_BASE = "https://example.net/"
 
 # Context cache folder
-CONTEXT_CACHE = os.path.expanduser("~/.local/var/sonormal/contexts")
-os.makedirs(CONTEXT_CACHE, exist_ok=True)
+DEFAULT_CONTEXT_CACHE = os.path.expanduser("~/.local/var/sonormal/contexts")
+os.makedirs(DEFAULT_CONTEXT_CACHE, exist_ok=True)
 
 # Location of the schema,.org context
 SCHEMA_ORG_CONTEXT_SOURCE = "https://schema.org/docs/jsonldcontext.jsonld"
@@ -45,7 +45,7 @@ SCHEMA_ORG_CONTEXT_URLS = [
 SO_CONTEXT = {}
 SOS_CONTEXT = {}
 SOL_CONTEXT = {}
-
+SO_CONTEXTS_PREPARED = False
 
 # Common schema.org things
 SO_ = "http://schema.org/"
@@ -108,7 +108,9 @@ atexit.register(__cleanup)
 
 
 def prepareSchemaOrgLocalContexts(
-    context_folder=CONTEXT_CACHE, src_url=SCHEMA_ORG_CONTEXT_SOURCE, exist_ok=False
+    context_folder=DEFAULT_CONTEXT_CACHE,
+    src_url=SCHEMA_ORG_CONTEXT_SOURCE,
+    refresh=True,
 ):
     """
     Download a copy of the schema.org context and create variants.
@@ -134,6 +136,7 @@ def prepareSchemaOrgLocalContexts(
     global SO_CONTEXT
     global SOS_CONTEXT
     global SOL_CONTEXT
+    global SO_CONTEXTS_PREPARED
 
     paths = {
         "so": os.path.join(context_folder, SCHEMA_ORG_HTTP_CONTEXT_FILE),
@@ -141,15 +144,21 @@ def prepareSchemaOrgLocalContexts(
         "sol": os.path.join(context_folder, SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE),
     }
     __L.debug("PATHS = %s", paths)
+    for url in SCHEMA_ORG_CONTEXT_URLS:
+        SO_CONTEXT[url] = paths["so"]
+        SOS_CONTEXT[url] = paths["sos"]
+        SOL_CONTEXT[url] = paths["sol"]
     if (
         os.path.exists(paths["so"])
         and os.path.exists(paths["sos"])
         and os.path.exists(paths["sol"])
-        and not exist_ok
+        and not refresh
     ):
-        raise ValueError(
-            f"Schema.org context documents already present in {context_folder}"
-        )
+        # Contexts already available
+        SO_CONTEXTS_PREPARED = True
+        return paths
+
+    # Download context files
     headers = {"Accept": f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9"}
     response = requests.get(src_url, headers=headers, timeout=10, allow_redirects=True)
     if not response.status_code == requests.codes.OK:
@@ -172,146 +181,8 @@ def prepareSchemaOrgLocalContexts(
     }
     with open(paths["sol"], "w") as so_dest:
         json.dump(so_context, so_dest, indent=2)
-    for url in SCHEMA_ORG_CONTEXT_URLS:
-        SO_CONTEXT[url] = paths["so"]
-        SOS_CONTEXT[url] = paths["sos"]
-        SOL_CONTEXT[url] = paths["sol"]
+    SO_CONTEXTS_PREPARED = True
     return paths
-
-
-def localRequestsDocumentLoader(context_map={}):
-    """Return a pyld.jsonld document loader.
-
-    The document loader intercepts requests to retrieve a remote context
-    and replaces with a local copy of the document.
-
-    Args:
-        context_map (dict): map of context URL to local document
-
-    Returns:
-        dict:
-    """
-
-    def localRequestsDocumentLoaderImpl(url, options={}):
-        _url = url.lower().strip()
-        doc = context_map.get(_url, None)
-        if not doc is None:
-            res = {
-                "contextUrl": None,
-                "documentUrl": "https://schema.org/docs/jsonldcontext.jsonld",
-                "contentType": "application/ld+json",
-                "document": json.load(open(doc, "r")),
-            }
-            return res
-        # No mapping available, fall back to using the requests loader
-        loader = pyld.jsonld.requests_document_loader()
-        return loader(url)
-
-    return localRequestsDocumentLoaderImpl
-
-
-def isHttpsSchemaOrg(exp_doc) -> bool:
-    """True if exp_doc is using https://schema.org/ namespace
-
-    Returns the first match of the use of https://schema.org or
-    http://schema.org on a key found by recursing through the
-    object.
-
-    Args:
-        exp_doc: expanded JSON-LD document
-
-    Returns:
-        bool: True is document is using `https://schema.org` namespace
-    """
-    for i, v in enumerate(exp_doc):
-        if isinstance(v, dict):
-            return isHttpsSchemaOrg(exp_doc[i])
-        if isinstance(v, str):
-            if v.startswith("https://schema.org"):
-                return True
-            elif v.startswith("http://schema.org"):
-                return False
-    return False
-
-
-def switchToHttpSchemaOrg(doc, options={}):
-    """Convert SO JSONLD namespace from https://schema.org/ to http://schema.org/
-
-    The document is expanded and compacted with only schema.org properties
-    compacted. Properties in other namespaces remain expanded.
-
-    Args:
-        doc: schema.org JSON-LD document
-
-    Returns:
-        document: JSON-LD document using http://schema.org/ namespace
-    """
-    # First expand the document
-    # options may include a default base for the document
-    expanded = pyld.jsonld.expand(doc, options)
-
-    # Determine which context to apply
-    is_https = isHttpsSchemaOrg(expanded)
-    context_map = SO_CONTEXT
-    if is_https:
-        context_map = SOS_CONTEXT
-    opts = {
-        "documentLoader": localRequestsDocumentLoader(context_map=context_map),
-    }
-
-    # Compact the schema.org elements of the document
-    context = {"@context": "https://schema.org/"}
-    return pyld.jsonld.compact(expanded, context, opts)
-
-
-def addSchemaOrgListContainer(doc):
-    """Expand document with context including @list container for creator and identifier
-
-    Args:
-        doc: Schema.org document using http://schema.org/ namespace
-
-    Returns:
-        document: Expanded JSON-LD
-    """
-    options = {
-        "documentLoader": localRequestsDocumentLoader(context_map=SOL_CONTEXT),
-    }
-    expanded = pyld.jsonld.expand(doc, options)
-    return expanded
-
-
-def sosoNormalize(doc):
-    """
-    Return JSONLD document expanded and using SOSO recommendations
-
-    Args:
-        doc: JSONLD
-
-    Returns:
-        expanded JSONLD with http://schema.org/ and @list added to identifier and creator
-    """
-    newdoc = switchToHttpSchemaOrg(doc)
-    sosodoc = addSchemaOrgListContainer(newdoc)
-    return sosodoc
-
-
-def sosoDatasetFrame(expanded, options={}):
-    """
-    Return a SOSO JSONLD document framed from a Dataset perspective
-
-    Args:
-        expanded:
-
-    Returns:
-
-    """
-    frame_doc = copy.deepcopy(SO_DATASET_FRAME)
-    opts = {
-        "documentLoader": localRequestsDocumentLoader(context_map=SOL_CONTEXT),
-    }
-    opts.update(options)
-    fdoc = pyld.jsonld.frame(expanded, frame_doc, options=opts)
-    return fdoc
 
 
 class ObjDict(dict):
@@ -509,10 +380,169 @@ def cachingDocumentLoader(url, options={}):
     return resp
 
 
+def localRequestsDocumentLoader(
+    context_map={}, document_cache=None, fallback_loader=None
+):
+    """Return a pyld.jsonld document loader.
+
+    The document loader intercepts requests to retrieve a remote context
+    and replaces with a local copy of the document.
+
+    Args:
+        context_map (dict): map of context URL to local document
+        document_cache (dict like): cache for documents
+        fallback_loader: loader to use if not local or in cache
+
+    Returns:
+        dict:
+    """
+
+    def localRequestsDocumentLoaderImpl(url, options={}):
+        # is a cached copy available?
+        if not document_cache is None:
+            if url in document_cache:
+                return document_cache[url]
+        # does URL match something in the context_map?
+        doc = context_map.get(url, None)
+        if not doc is None:
+            res = {
+                "contextUrl": None,
+                "documentUrl": "https://schema.org/docs/jsonldcontext.jsonld",
+                "contentType": "application/ld+json",
+                "document": json.load(open(doc, "r"))
+            }
+            return res
+        # No mapping available, fall back to using the fallback_loader
+        res = fallback_loader(url, options)
+        if not document_cache is None:
+            # cache the response for later reuse
+            if isinstance(document_cache, dict):
+                document_cache[url] = res
+            else:
+                try:
+                    document_cache.set(url, res, expire=DOCUMENT_CACHE_TIMEOUT)
+                except Exception as e:
+                    __L.warning("Unable to cache response from %s", url)
+        return res
+
+    #if no fallback is provided, create a default one using the pyld requests loader
+    if fallback_loader is None:
+        fallback_loader = pyld.jsonld.requests_document_loader()
+    return localRequestsDocumentLoaderImpl
+
+
 def installDocumentLoader(expire_existing=False):
-    __L.info("Installing cachingDocumentLoader")
-    __L.info("FORCE_SO_VERSION: %s", FORCE_SO_VERSION)
+    __L.info("Installing cachingLocalDocumentLoader")
     pyld.jsonld.set_document_loader(cachingDocumentLoader)
     global DOCUMENT_CACHE
     if expire_existing:
         DOCUMENT_CACHE.expire()
+
+
+def isHttpsSchemaOrg(exp_doc) -> bool:
+    """True if exp_doc is using https://schema.org/ namespace
+
+    Returns the first match of the use of https://schema.org or
+    http://schema.org on a key found by recursing through the
+    object.
+
+    Args:
+        exp_doc: expanded JSON-LD document
+
+    Returns:
+        bool: True is document is using `https://schema.org` namespace
+    """
+    for i, v in enumerate(exp_doc):
+        if isinstance(v, dict):
+            return isHttpsSchemaOrg(exp_doc[i])
+        if isinstance(v, str):
+            if v.startswith("https://schema.org"):
+                return True
+            elif v.startswith("http://schema.org"):
+                return False
+    return False
+
+
+def switchToHttpSchemaOrg(doc, options={}):
+    """Convert SO JSONLD namespace from https://schema.org/ to http://schema.org/
+
+    The document is expanded and compacted with only schema.org properties
+    compacted. Properties in other namespaces remain expanded.
+
+    Args:
+        doc: schema.org JSON-LD document
+
+    Returns:
+        document: JSON-LD document using http://schema.org/ namespace
+    """
+    # First expand the document
+    # options may include a default base for the document
+    opts = {
+        "documentLoader": localRequestsDocumentLoader(context_map=SO_CONTEXT),
+    }
+    opts.update(options)
+    expanded = pyld.jsonld.expand(doc, opts)
+
+    # Determine which context to apply
+    is_https = isHttpsSchemaOrg(expanded)
+    context_map = SO_CONTEXT
+    if is_https:
+        context_map = SOS_CONTEXT
+    opts = {
+        "documentLoader": localRequestsDocumentLoader(context_map=context_map),
+    }
+
+    # Compact the schema.org elements of the document
+    context = {"@context": "https://schema.org/"}
+    return pyld.jsonld.compact(expanded, context, opts)
+
+
+def addSchemaOrgListContainer(doc):
+    """Expand document with context including @list container for creator and identifier
+
+    Args:
+        doc: Schema.org document using http://schema.org/ namespace
+
+    Returns:
+        document: Expanded JSON-LD
+    """
+    options = {
+        "documentLoader": localRequestsDocumentLoader(context_map=SOL_CONTEXT),
+    }
+    expanded = pyld.jsonld.expand(doc, options)
+    return expanded
+
+
+def sosoNormalize(doc, options={}):
+    """
+    Return JSONLD document expanded and using SOSO recommendations
+
+    Args:
+        doc: JSONLD
+        options: pyld.jsonld.expand options
+
+    Returns:
+        expanded JSONLD with http://schema.org/ and @list added to identifier and creator
+    """
+    newdoc = switchToHttpSchemaOrg(doc, options=options)
+    sosodoc = addSchemaOrgListContainer(newdoc)
+    return sosodoc
+
+
+def sosoDatasetFrame(expanded, options={}):
+    """
+    Return a SOSO JSONLD document framed from a Dataset perspective
+
+    Args:
+        expanded:
+
+    Returns:
+
+    """
+    frame_doc = copy.deepcopy(SO_DATASET_FRAME)
+    opts = {
+        "documentLoader": localRequestsDocumentLoader(context_map=SOL_CONTEXT),
+    }
+    opts.update(options)
+    fdoc = pyld.jsonld.frame(expanded, frame_doc, options=opts)
+    return fdoc
