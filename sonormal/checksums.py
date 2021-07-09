@@ -30,7 +30,7 @@ def computeChecksumsString(s, sha256=True, sha1=True, md5=True, encoding="UTF-8"
     return computeChecksumsBytes(b, sha256=sha256, sha1=sha1, md5=md5)
 
 
-def jsonChecksums(doc):
+def jsonChecksums(doc, canonicalize=True):
     """
     Compute checksums for a JSON object.
 
@@ -44,7 +44,10 @@ def jsonChecksums(doc):
         dict of hashes, bytes
 
     """
-    b = c14n.canonicalize(doc)
+    if canonicalize:
+        b = c14n.canonicalize(doc)
+    else:
+        b = json.dumps(doc, indent=2, sort_keys=True).encode("utf-8")
     return computeChecksumsBytes(b)
 
 
