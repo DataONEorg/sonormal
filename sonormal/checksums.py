@@ -1,6 +1,7 @@
 import logging
 import hashlib
 import json
+# c14n is provided with pyld
 import c14n
 
 HASH_BLOCK_SIZE = 65536
@@ -9,11 +10,12 @@ HASH_BLOCK_SIZE = 65536
 def computeChecksumsBytes(b, sha256=True, sha1=True, md5=True):
     """
     Computes hashes for the provided Bytes
+
     Args:
         b: bytes
 
     Returns:
-        hashes
+        dict: Dict of calculated hash hex digests
     """
     hashes = {"sha256": None, "sha1": None, "md5": None}
     if sha256:
@@ -37,8 +39,12 @@ def jsonChecksums(doc, canonicalize=True):
     The JSON is serialized to UTF-8 text with no indenting, no space between items
     and key-value, and sorted keys.
 
+    If canonicalize, then the JSON canonicalization Scheme rules are applied using
+    the c14n implementation provided with pyld.
+
     Args:
         doc: The JSON structure
+        canonicalize(bool): Apply c14n canonicalization to the JSON
 
     Returns:
         dict of hashes, bytes
