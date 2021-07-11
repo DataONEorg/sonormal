@@ -173,10 +173,14 @@ def prepareSchemaOrgLocalContexts(
     with open(paths["sos"], "w") as so_dest:
         json.dump(sos_context, so_dest, indent=2)
 
-    # Add @list to identifier and creator
+    # Add @list to identifier, creator, and description
     so_context["@context"]["creator"] = {"@id": "schema:creator", "@container": "@list"}
     so_context["@context"]["identifier"] = {
         "@id": "schema:identifier",
+        "@container": "@list",
+    }
+    so_context["@context"]["description"] = {
+        "@id": "schema:description",
         "@container": "@list",
     }
     with open(paths["sol"], "w") as so_dest:
@@ -186,6 +190,10 @@ def prepareSchemaOrgLocalContexts(
 
 
 class ObjDict(dict):
+    """
+    Implements a dict that enables access to properties like an object.
+    """
+
     def __getattr__(self, name):
         if name in self:
             return self[name]
@@ -349,37 +357,6 @@ def requests_document_loader_history(secure=False, **kwargs):
     return loader
 
 
-def cachingDocumentLoader(url, options={}):
-    """
-    Document loader for pyld.jsonld
-
-    Used for operations like resolving remote context documents. This implementation provides
-    a very simple cache (in memory dict) and overrides the location of the schema.org context
-    to use the v12 version of the context document.
-
-    Install by calling:
-
-      pyld.jsonld.set_document_loader(sonormal.cachingDocumentLoader)
-    """
-    __L.debug("DOC LOADER URL = %s", url)
-    if FORCE_SO_VERSION and SO_MATCH.match(url) is not None:
-        __L.debug("Forcing schema.org v12 context")
-        url = SO_CONTEXT_LOCATION
-    global DOCUMENT_CACHE
-    if url in DOCUMENT_CACHE:
-        __L.debug("From cache")
-        return DOCUMENT_CACHE[url]
-    options.setdefault("timeout", REQUEST_TIMEOUT)
-    options.setdefault("allow_redirects", True)
-    loader = requests_document_loader_history(
-        timeout=options.get("timeout"), allow_redirects=options.get("allow_redirects")
-    )
-    resp = loader(url, options=options)
-    # loader raises on error, so failed requests are not cached
-    DOCUMENT_CACHE.set(url, resp, expire=DOCUMENT_CACHE_TIMEOUT)
-    return resp
-
-
 def localRequestsDocumentLoader(
     context_map={}, document_cache=None, fallback_loader=None
 ):
@@ -390,7 +367,7 @@ def localRequestsDocumentLoader(
 
     Args:
         context_map (dict): map of context URL to local document
-        document_cache (dict like): cache for documents
+        document_cache (dict like): cache for documents, can be dict or DiskCache
         fallback_loader: loader to use if not local or in cache
 
     Returns:
@@ -409,7 +386,7 @@ def localRequestsDocumentLoader(
                 "contextUrl": None,
                 "documentUrl": "https://schema.org/docs/jsonldcontext.jsonld",
                 "contentType": "application/ld+json",
-                "document": json.load(open(doc, "r"))
+                "document": json.load(open(doc, "r")),
             }
             return res
         # No mapping available, fall back to using the fallback_loader
@@ -425,18 +402,10 @@ def localRequestsDocumentLoader(
                     __L.warning("Unable to cache response from %s", url)
         return res
 
-    #if no fallback is provided, create a default one using the pyld requests loader
+    # if no fallback is provided, create a default one using the pyld requests loader
     if fallback_loader is None:
         fallback_loader = pyld.jsonld.requests_document_loader()
     return localRequestsDocumentLoaderImpl
-
-
-def installDocumentLoader(expire_existing=False):
-    __L.info("Installing cachingLocalDocumentLoader")
-    pyld.jsonld.set_document_loader(cachingDocumentLoader)
-    global DOCUMENT_CACHE
-    if expire_existing:
-        DOCUMENT_CACHE.expire()
 
 
 def isHttpsSchemaOrg(exp_doc) -> bool:
@@ -515,14 +484,18 @@ def addSchemaOrgListContainer(doc):
 
 def sosoNormalize(doc, options={}):
     """
-    Return JSONLD document expanded and using SOSO recommendations
+    Return JSONLD document expanded and using SOSO recommendations.
+
+    The JSON-LD is set to use a remote reference to the schema.org context
+    and expanded using a modified version of the schema.org context to
+    set the @container for certain elements to be @list.
 
     Args:
         doc: JSONLD
         options: pyld.jsonld.expand options
 
     Returns:
-        expanded JSONLD with http://schema.org/ and @list added to identifier and creator
+        expanded JSONLD with http://schema.org/ and @list for certain elements
     """
     newdoc = switchToHttpSchemaOrg(doc, options=options)
     sosodoc = addSchemaOrgListContainer(newdoc)
