@@ -1,5 +1,5 @@
 """
-Retrieve JSON-LD from a URL
+Retrieve JSON-LD from a URL.
 """
 import time
 import logging
@@ -12,7 +12,7 @@ import pyppeteer
 import sonormal
 import sonormal.utils
 
-# Wait this long for a browser to render a page
+# Wait upto this long for a browser to render a page
 BROWSER_RENDER_TIMEOUT = 10000  # msec
 
 __L = logging.getLogger("sonormal.getjsonld")
@@ -221,7 +221,7 @@ def downloadJson(
     profile=None,
     requestProfile=None,
     try_jsrender=True,
-    json_parse_strict=True,
+    documentLoader=None,
 ):
     headers.setdefault("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
     try:
@@ -230,6 +230,8 @@ def downloadJson(
             "documentLoader": pyld.jsonld.get_document_loader(),
             "json_parse_strict": json_parse_strict,
         }
+        if documentLoader is not None:
+            options["documentLoader"] = documentLoader
         response_doc = pyld.jsonld.load_document(
             url, options, profile=profile, requestProfile=requestProfile
         )
