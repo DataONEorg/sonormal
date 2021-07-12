@@ -1,5 +1,5 @@
 """
-Retrieve JSON-LD from a URL
+Retrieve JSON-LD from a URL.
 """
 import time
 import logging
@@ -12,7 +12,7 @@ import pyppeteer
 import sonormal
 import sonormal.utils
 
-# Wait this long for a browser to render a page
+# Wait upto this long for a browser to render a page
 BROWSER_RENDER_TIMEOUT = 10000  # msec
 
 __L = logging.getLogger("sonormal.getjsonld")
@@ -144,8 +144,10 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
     try:
         page = await browser.newPage()
         if requestProfile is not None:
-            accept = headers.get('Accept', sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
-            headers["Accept"] = f"application/ld+json;profile={requestProfile}, {accept}"
+            accept = headers.get("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
+            headers[
+                "Accept"
+            ] = f"application/ld+json;profile={requestProfile}, {accept}"
 
         await page.setExtraHTTPHeaders(headers)
         page.on("request", startRequest)
@@ -158,7 +160,8 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
         try:
             __L.debug("PAGE WAIT XPATH")
             await page.waitForXPath(
-                f'//script[@type="{sonormal.MEDIA_JSONLD}"]', timeout=BROWSER_RENDER_TIMEOUT
+                f'//script[@type="{sonormal.MEDIA_JSONLD}"]',
+                timeout=BROWSER_RENDER_TIMEOUT,
             )
         except Exception as e:
             __L.error(e)
@@ -210,13 +213,22 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
     return doc
 
 
-def downloadJson(url, headers={}, profile=None, requestProfile=None, try_jsrender=True):
+def downloadJson(
+    url,
+    headers={},
+    profile=None,
+    requestProfile=None,
+    try_jsrender=True,
+    documentLoader=None,
+):
     headers.setdefault("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
     try:
         options = {
             "headers": headers,
             "documentLoader": pyld.jsonld.get_document_loader(),
         }
+        if documentLoader is not None:
+            options["documentLoader"] = documentLoader
         response_doc = pyld.jsonld.load_document(
             url, options, profile=profile, requestProfile=requestProfile
         )
