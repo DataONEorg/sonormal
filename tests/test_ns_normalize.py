@@ -29,8 +29,9 @@ def test_vocab(soContext):
     doc = {"@context": {"@vocab": "https://schema.org/"}, "name": "test value"}
     tdoc = sonormal.switchToHttpSchemaOrg(doc)
     assert tdoc.get("@context") in sonormal.SCHEMA_ORG_CONTEXT_URLS
+    cache = sonormal.DOCUMENT_CACHE
     options = {
-        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT)
+        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT, document_cache=cache)
     }
     edoc = pyld.jsonld.expand(tdoc, options)
     v = edoc[0].get("http://schema.org/name", [{}])[0].get("@value")
@@ -41,8 +42,9 @@ def test_remote(soContext):
     doc = {"@context": "https://schema.org/", "name": "test value"}
     tdoc = sonormal.switchToHttpSchemaOrg(doc)
     assert tdoc.get("@context") in sonormal.SCHEMA_ORG_CONTEXT_URLS
+    cache = sonormal.DOCUMENT_CACHE
     options = {
-        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT)
+        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT, document_cache=cache)
     }
     edoc = pyld.jsonld.expand(tdoc, options)
     v = edoc[0].get("http://schema.org/name", [{}])[0].get("@value")
@@ -53,8 +55,9 @@ def test_prefix(soContext):
     doc = {"@context": {"so": "https://schema.org/"}, "so:name": "test value"}
     tdoc = sonormal.switchToHttpSchemaOrg(doc)
     assert tdoc.get("@context") in sonormal.SCHEMA_ORG_CONTEXT_URLS
+    cache = sonormal.DOCUMENT_CACHE
     options = {
-        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT)
+        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT, document_cache=cache)
     }
     edoc = pyld.jsonld.expand(tdoc, options)
     v = edoc[0].get("http://schema.org/name", [{}])[0].get("@value")
@@ -70,8 +73,9 @@ def test_base(soContext):
     options = {"base": "https://example.xyz/test/"}
     tdoc = sonormal.switchToHttpSchemaOrg(doc, options=options)
     assert tdoc.get("@context") in sonormal.SCHEMA_ORG_CONTEXT_URLS
+    cache = sonormal.DOCUMENT_CACHE
     options = {
-        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT)
+        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SO_CONTEXT, document_cache=cache)
     }
     edoc = pyld.jsonld.expand(tdoc, options)
     v = edoc[0].get("http://schema.org/name", [{}])[0].get("@value")
@@ -228,8 +232,9 @@ def test_dryad(soContext):
     tdoc = sonormal.switchToHttpSchemaOrg(doc)
     print(json.dumps(tdoc, indent=2))
     assert tdoc.get("@context") == "https://schema.org/"
+    cache = sonormal.DOCUMENT_CACHE
     options = {
-        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SOL_CONTEXT)
+        "documentLoader": sonormal.localRequestsDocumentLoader(sonormal.SOL_CONTEXT, document_cache=cache)
     }
     edoc = pyld.jsonld.expand(tdoc, options)
     v = edoc[0].get("http://schema.org/name", [{}])[0].get("@value")

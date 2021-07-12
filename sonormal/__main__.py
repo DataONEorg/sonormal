@@ -102,9 +102,7 @@ def main(ctx, webpage, response, base, profile, request_profile, soprod, relaxed
     """Retrieve and process JSON-LD."""
     ctx.ensure_object(dict)
     logging.config.dictConfig(logging_config)
-    if soprod:
-        sonormal.FORCE_SO_VERSION = False
-    sonormal.installDocumentLoader()
+    sonormal.prepareSchemaOrgLocalContexts()
     ctx.obj["render"] = webpage
     ctx.obj["show_response"] = response
     ctx.obj["base"] = base
@@ -199,14 +197,22 @@ def cacheList(ctx, purge):
     short_help="Retrieve JSON-LD",
 )
 @click.option("-e", "--expand", is_flag=True, help="Expand the graph")
+@click.option(
+    "-s", "--sohttp", is_flag=True, help="Adjust to use http://schema.org/ namespace"
+)
+@click.option("-S", "--soso", is_flag=True, help="Inject @list for ordering certain properties (implies expand)")
 @click.argument("source")
 @click.pass_context
+<<<<<<< HEAD
 def getJsonld(ctx, expand, source=None):
     '''Retrieve JSON-LD from JSON-LD or HTML document from stdin, disk file, or URL. 
 
     Downloaded content is cached to avoid repeated download when performing
     multiple operations on the same document.
     '''
+=======
+def getJsonld(ctx, expand, sohttp, soso, source=None):
+>>>>>>> e5f47c4 (Setting up external configuration)
     L = getLogger()
     doc = _getDocument(
         source,
@@ -223,6 +229,12 @@ def getJsonld(ctx, expand, source=None):
     if not ctx.obj["base"] is None:
         L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
         options["base"] = ctx.obj["base"]
+    if soso:
+        so_doc = sonormal.sosoNormalize(doc["document"], options=options)
+        doc["document"] = so_doc
+    elif sohttp:
+        so_doc = sonormal.switchToHttpSchemaOrg(doc["document"], options=options)
+        doc["document"] = so_doc
     if expand:
         doc["document"] = pyld.jsonld.expand(doc["document"], options=options)
     print(json.dumps(doc["document"], indent=2))
@@ -427,6 +439,41 @@ def jsonldPlayground(ctx, open_browser, source=None):
     if open_browser:
         webbrowser.open(url, new=2)
 
+
+
+@main.command("info")
+@click.argument("source", required=False)
+@click.pass_context
+def jsonldInfo(ctx, source=None):
+    '''
+    Compute information about the JSON-LD
+
+    Args:
+        ctx:
+        source:
+
+    Returns:
+        dict
+    '''
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    checksums, doc_b = sonormal.checksums.jsonChecksums(doc["document"])
+    _framed = sonormal.normalize.frameSODataset(doc["document"])
+    identifiers = sonormal.normalize.getDatasetsIdentifiers(_framed)
+    info = {
+        'size': len(doc_b),
+        'checksums': checksums,
+        'identifiers': identifiers,
+    }
+    print(json.dumps(info, indent=2, sort_keys=True))
 
 if __name__ == "__main__":
     sys.exit(main())
