@@ -1,0 +1,16 @@
+# Settings are loaded from several locations, with the last having highest priority
+# /etc/sonormal/sonormal.toml
+# /usr/local/etc/sonormal/sonormal.toml
+# ~/.local/sonormal/sonormal.toml
+# ./settings.toml
+
+[default]
+#used by sonormal lib
+default_base = "https://example.net/"
+default_context_cache = "/tmp/sonormal/contexts"
+schema_org_context_source = "https://schema.org/docs/jsonldcontext.jsonld"
+schema_org_http_context_file = "schema_org_http_context.jsonld"
+schema_org_http_list_context_file = "schema_org_http_list_context.jsonld"
+schema_org_https_context_file = "schema_org_https_context.jsonld"
+document_cache_path = "/tmp/sonormal/documents"
+

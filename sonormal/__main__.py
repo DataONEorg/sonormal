@@ -95,9 +95,7 @@ def logResponseInfo(resp):
 def main(ctx, webpage, response, base, profile, request_profile, soprod):
     ctx.ensure_object(dict)
     logging.config.dictConfig(logging_config)
-    if soprod:
-        sonormal.FORCE_SO_VERSION = False
-    sonormal.installDocumentLoader()
+    sonormal.prepareSchemaOrgLocalContexts()
     ctx.obj["render"] = webpage
     ctx.obj["show_response"] = response
     ctx.obj["base"] = base
@@ -168,21 +166,28 @@ def cacheList(ctx):
     L = getLogger()
     i = 0
     for k in sonormal.DOCUMENT_CACHE:
-        #hack to get date added of items
+        # hack to get date added of items
         sql = "SELECT store_time, access_time FROM Cache WHERE key=?"
-        _rows = sonormal.DOCUMENT_CACHE._sql(sql, (k, ))
+        _rows = sonormal.DOCUMENT_CACHE._sql(sql, (k,))
         ((t0, t1),) = _rows
-        print(f"{sonormal.utils.datetimeToJsonStr(sonormal.utils.datetimeFromSomething(t0))} {k}")
+        print(
+            f"{sonormal.utils.datetimeToJsonStr(sonormal.utils.datetimeFromSomething(t0))} {k}"
+        )
         i += 1
+
 
 @main.command(
     "get",
     help="Retrieve JSON-LD from JSON-LD or HTML document from stdin, disk file, or URL",
 )
 @click.option("-e", "--expand", is_flag=True, help="Expand the graph")
+@click.option(
+    "-s", "--sohttp", is_flag=True, help="Adjust to use http://schema.org/ namespace"
+)
+@click.option("-S", "--soso", is_flag=True, help="Inject @list for ordering certain properties (implies expand)")
 @click.argument("source")
 @click.pass_context
-def getJsonld(ctx, expand, source=None):
+def getJsonld(ctx, expand, sohttp, soso, source=None):
     L = getLogger()
     doc = _getDocument(
         source,
@@ -198,6 +203,12 @@ def getJsonld(ctx, expand, source=None):
     if not ctx.obj["base"] is None:
         L.info("Overriding base of %s with %s", doc["documentUrl"], ctx.obj["base"])
         options["base"] = ctx.obj["base"]
+    if soso:
+        so_doc = sonormal.sosoNormalize(doc["document"], options=options)
+        doc["document"] = so_doc
+    elif sohttp:
+        so_doc = sonormal.switchToHttpSchemaOrg(doc["document"], options=options)
+        doc["document"] = so_doc
     if expand:
         doc["document"] = pyld.jsonld.expand(doc["document"], options=options)
     print(json.dumps(doc["document"], indent=2))
@@ -337,7 +348,9 @@ def compactJsonld(ctx, source=None, context=None):
         L.error("No document loaded from %s", input)
         return
     options = {"base": doc["documentUrl"]}
-    cdoc = sonormal.normalize.compactSODataset(doc["document"], options=options, context=context)
+    cdoc = sonormal.normalize.compactSODataset(
+        doc["document"], options=options, context=context
+    )
     print(json.dumps(cdoc, indent=2))
 
 
@@ -360,6 +373,41 @@ def jsonldPlayground(ctx, source=None):
     data = {"data": doc["document"]}
     res = requests.post(url, data=data, timeout=5)
     print(res.text)
+
+
+@main.command("info")
+@click.argument("source", required=False)
+@click.pass_context
+def jsonldInfo(ctx, source=None):
+    '''
+    Compute information about the JSON-LD
+
+    Args:
+        ctx:
+        source:
+
+    Returns:
+        dict
+    '''
+    L = getLogger()
+    doc = _getDocument(
+        source,
+        render=ctx.obj.get("render", True),
+        profile=ctx.obj.get("profile", None),
+        requestProfile=ctx.obj.get("request_profile", None),
+    )
+    if doc["document"] is None:
+        L.error("No document loaded from %s", input)
+        return
+    checksums, doc_b = sonormal.checksums.jsonChecksums(doc["document"])
+    _framed = sonormal.normalize.frameSODataset(doc["document"])
+    identifiers = sonormal.normalize.getDatasetsIdentifiers(_framed)
+    info = {
+        'size': len(doc_b),
+        'checksums': checksums,
+        'identifiers': identifiers,
+    }
+    print(json.dumps(info, indent=2, sort_keys=True))
 
 if __name__ == "__main__":
     sys.exit(main())

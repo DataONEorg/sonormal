@@ -9,6 +9,7 @@ import urllib.parse as urllib_parse
 import diskcache
 import atexit
 import copy
+from sonormal.config import settings
 
 __L = logging.getLogger("sonormal")
 
@@ -21,18 +22,28 @@ MEDIA_XHTML = "application/xml+xhtml"
 MEDIA_XML = "application/xml"
 
 # Default base to use during expansion
-DEFAULT_BASE = "https://example.net/"
+DEFAULT_BASE = settings.get("DEFAULT_BASE", "https://example.net/")
 
 # Context cache folder
-DEFAULT_CONTEXT_CACHE = os.path.expanduser("~/.local/var/sonormal/contexts")
+DEFAULT_CONTEXT_CACHE = settings.get(
+    "DEFAULT_CONTEXT_CACHE", os.path.expanduser("~/.local/var/sonormal/contexts")
+)
 os.makedirs(DEFAULT_CONTEXT_CACHE, exist_ok=True)
 
 # Location of the schema,.org context
-SCHEMA_ORG_CONTEXT_SOURCE = "https://schema.org/docs/jsonldcontext.jsonld"
+SCHEMA_ORG_CONTEXT_SOURCE = settings.get(
+    "SCHEMA_ORG_CONTEXT_SOURCE", "https://schema.org/docs/jsonldcontext.jsonld"
+)
 
-SCHEMA_ORG_HTTP_CONTEXT_FILE = "schema_org_http_context.jsonld"
-SCHEMA_ORG_HTTPS_CONTEXT_FILE = "schema_org_https_context.jsonld"
-SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE = "schema_org_http_list_context.jsonld"
+SCHEMA_ORG_HTTP_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTP_CONTEXT_FILE", "schema_org_http_context.jsonld"
+)
+SCHEMA_ORG_HTTPS_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTPS_CONTEXT_FILE", "schema_org_http_context.jsonld"
+)
+SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE", "schema_org_http_list_context.jsonld"
+)
 
 SCHEMA_ORG_CONTEXT_URLS = [
     "http://schema.org",
@@ -67,14 +78,6 @@ SO_DATASET_FRAME = {
 # regexp to match the typical location of the schema.org remote context
 SO_MATCH = re.compile(r"http(s)?\://schema.org(/)?")
 
-# Location of the schema.org context document
-# Currently forcing to a specific revision of SO that uses the https context
-# More detail at https://github.com/schemaorg/schemaorg/pull/2814#issuecomment-795667992
-# SO_CONTEXT_LOCATION = "https://schema.org/docs/jsonldcontext.jsonld"
-# Set to use a specific version of schema.org context
-SO_CONTEXT_LOCATION = "https://raw.githubusercontent.com/schemaorg/schemaorg/836cae785cfcb09fe69d0a611be9b8c73b67a0d4/data/releases/12.0/schemaorgcontext.jsonld"
-FORCE_SO_VERSION = True
-
 # Timeout for the document loader requests
 REQUEST_TIMEOUT = 30  # seconds
 
@@ -90,7 +93,9 @@ DEFAULT_RESPONSE_CONTENT_TYPE = MEDIA_HTML
 DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7, */*;q=0.1"
 
 # Path to the document cache
-DOCUMENT_CACHE_PATH = os.path.expanduser("~/.local/share/sonormal/cache")
+DOCUMENT_CACHE_PATH = settings.get(
+    "DOCUMENT_CACHE_PATH", os.path.expanduser("~/.local/share/sonormal/cache")
+)
 os.makedirs(DOCUMENT_CACHE_PATH, exist_ok=True)
 
 DOCUMENT_CACHE_TIMEOUT = 300  # Cache object expiration in seconds
