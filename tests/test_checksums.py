@@ -103,7 +103,7 @@ test_compare = [
 def test_jdonldChecksum(doc, expected):
     with tempfile.TemporaryDirectory() as dest_folder:
         # setup the local context mappings for normalization
-        paths = sonormal.prepareSchemaOrgLocalContexts(dest_folder, refresh=True)
+        paths = sonormal.prepareSchemaOrgLocalContexts(dest_folder, refresh=False)
 
         # Ensure schema.org docs are using the same pattern
         cnv_doc = sonormal.switchToHttpSchemaOrg(doc)
@@ -128,13 +128,16 @@ def test_jdonldChecksum(doc, expected):
 def test_jsonldCompare(a, b):
     with tempfile.TemporaryDirectory() as dest_folder:
         # setup the local context mappings for normalization
-        paths = sonormal.prepareSchemaOrgLocalContexts(dest_folder, refresh=True)
+        paths = sonormal.prepareSchemaOrgLocalContexts(dest_folder, refresh=False)
         a_cnv = sonormal.switchToHttpSchemaOrg(a)
         b_cnv = sonormal.switchToHttpSchemaOrg(b)
         a_exp = pyld.jsonld.expand(a_cnv)
         b_exp = pyld.jsonld.expand(b_cnv)
         chk_a, _ = sonormal.checksums.jsonChecksums(a_exp)
         chk_b, _ = sonormal.checksums.jsonChecksums(b_exp)
+        assert chk_a["sha256"] == chk_b["sha256"]
+        chk_a, _ = sonormal.checksums.jsonChecksums(a_exp, canonicalize=False)
+        chk_b, _ = sonormal.checksums.jsonChecksums(b_exp, canonicalize=False)
         assert chk_a["sha256"] == chk_b["sha256"]
 
 
