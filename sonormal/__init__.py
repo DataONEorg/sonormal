@@ -72,7 +72,7 @@ SO_DATASET_FRAME = {
     "@context": "https://schema.org/",
     "@type": "Dataset",
     "identifier": {},
-    "creator": {},
+    "creator": {}
 }
 
 # regexp to match the typical location of the schema.org remote context
@@ -90,7 +90,7 @@ DEFAULT_RESPONSE_CONTENT_TYPE = MEDIA_HTML
 # not be respected on some services. It's generally OK to fall back to
 # application/ld+json or text/html or even */*, though should be applied
 # consistently per target.
-DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7, */*;q=0.1"
+DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7"
 
 # Path to the document cache
 DOCUMENT_CACHE_PATH = settings.get(
@@ -115,7 +115,7 @@ atexit.register(__cleanup)
 def prepareSchemaOrgLocalContexts(
     context_folder=DEFAULT_CONTEXT_CACHE,
     src_url=SCHEMA_ORG_CONTEXT_SOURCE,
-    refresh=True,
+    refresh=False,
 ):
     """
     Download a copy of the schema.org context and create variants.
@@ -148,7 +148,6 @@ def prepareSchemaOrgLocalContexts(
         "sos": os.path.join(context_folder, SCHEMA_ORG_HTTPS_CONTEXT_FILE),
         "sol": os.path.join(context_folder, SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE),
     }
-    __L.debug("PATHS = %s", paths)
     for url in SCHEMA_ORG_CONTEXT_URLS:
         SO_CONTEXT[url] = paths["so"]
         SOS_CONTEXT[url] = paths["sos"]
@@ -161,14 +160,19 @@ def prepareSchemaOrgLocalContexts(
     ):
         # Contexts already available
         SO_CONTEXTS_PREPARED = True
+        __L.debug("Local contexts already exist")
         return paths
 
+    __L.info("Downloading and preparing SO contexts")
     # Download context files
     headers = {"Accept": f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9"}
     response = requests.get(src_url, headers=headers, timeout=10, allow_redirects=True)
     if not response.status_code == requests.codes.OK:
         raise ValueError(f"Unable to retrieve schema.org context from {src_url}")
     so_context = response.json()
+    #SO overrides @id and @type. Don't do that...
+    so_context["@context"]["id"] = "id"
+    so_context["@context"]["type"] = "type"
     with open(paths["so"], "w") as so_dest:
         json.dump(so_context, so_dest, indent=2)
     # Create context doc with https://schema.org/
@@ -218,10 +222,8 @@ class ObjDict(dict):
 class RequestsSessionTrack(requests.Session):
     def get_redirect_target(self, resp):
         L = logging.getLogger("sonormal")
-        L.debug("Response [%s] from %s", resp.status_code, resp.request.url)
         loc = super().get_redirect_target(resp)
-        if not loc is None:
-            L.info("Redirect target: %s %s", resp.status_code, loc)
+        L.debug("Redirect target: %s %s", resp.status_code, str(loc))
         return loc
 
 
@@ -247,7 +249,7 @@ def requests_document_loader_history(secure=False, **kwargs):
         :param url: the URL to retrieve.
         :return: the RemoteDocument.
         """
-        __L.debug("ENTER: loader")
+        __L.debug("Enter loader")
         _sess = RequestsSessionTrack()
         try:
             # validate URL
@@ -277,7 +279,7 @@ def requests_document_loader_history(secure=False, **kwargs):
             if headers is None:
                 headers = {"Accept": DEFAULT_REQUEST_ACCEPT_HEADERS}
 
-            __L.debug("HEADER = %s", headers)
+            __L.debug("Request headers: %s", headers)
             response = _sess.get(url, headers=headers, **kwargs)
 
             content_type = response.headers.get("content-type")
@@ -336,6 +338,7 @@ def requests_document_loader_history(secure=False, **kwargs):
                     and the_linked_alternate.get("type") == "application/ld+json"
                     and not re.match(r"^application\/(\w*\+)?json$", content_type)
                 ):
+                    __L.debug("Linked alternate: %s", the_linked_alternate["target"])
                     doc["contentType"] = "application/ld+json"
                     doc["documentUrl"] = pyld.jsonld.prepend_base(
                         url, the_linked_alternate["target"]
@@ -383,6 +386,7 @@ def localRequestsDocumentLoader(
         # is a cached copy available?
         if not document_cache is None:
             if url in document_cache:
+                __L.debug("Cache hit: %s", url)
                 return document_cache[url]
         # does URL match something in the context_map?
         doc = context_map.get(url, None)
