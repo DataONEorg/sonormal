@@ -19,6 +19,8 @@ JSON_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 RE_SPACE = re.compile(r"\s")
 
 EXTRA_MIME_TYPES = {
+    None: ".bin",
+    "": ".bin",
     "application/ld+json": ".jsonld",
 }
 
@@ -152,12 +154,16 @@ def guessExtension(content_type):
 
 
 def fileNameFromURL(url, content_type="application/octet-stream"):
+    if url is None:
+        return None
     _parts = urllib.parse.urlsplit(url)
     _path_parts = urllib.parse.unquote(_parts.path).split("/")
     n = -1
     while _path_parts[n] in COMMON_PATHS and -n < len(_path_parts):
         n = n-1
     base_name = _path_parts[n]
+    if base_name == '':
+        return None
     extension = guessExtension(content_type).strip(".")
     _bn_parts = base_name.split(".")
     if len(_bn_parts) > 1:
