@@ -12,11 +12,14 @@ CacheControl = "^0.12.6"
 dateparser = "^1.0.0"
 pyppeteer = "^0.2.5"
 jupyterlab = "^3.0.9"
+pyld = {git = "https://github.com/datadavev/pyld.git", tag = "ddv-2.1.0"}
 uWSGI = "^2.0.19"
 #clipboard = "^0.0.4"
 click = "^7.1.2"
 diskcache = "^5.2.1"
-pyld = {git = "https://github.com/datadavev/pyld.git", tag = "ddv-2.1.0"}
+Flask-Cors = "^3.0.10"
+dynaconf = "^3.1.4"
+shortuuid = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"

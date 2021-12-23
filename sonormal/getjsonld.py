@@ -66,6 +66,7 @@ def responseSummary(resp):
             row["result"] = "<< body >>"
         return row
 
+    #resp = response["response"]
     rs = {
         "request": {},
         "responses": [],
@@ -221,14 +222,14 @@ def downloadJson(
     profile=None,
     requestProfile=None,
     try_jsrender=True,
-    documentLoader=None,
+    documentLoader=None
 ):
     headers.setdefault("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
     try:
         options = {
             "headers": headers,
             "documentLoader": pyld.jsonld.get_document_loader(),
-            "json_parse_strict": json_parse_strict,
+            "extractAllScripts": True,
         }
         if documentLoader is not None:
             options["documentLoader"] = documentLoader
@@ -251,7 +252,6 @@ def downloadJson(
                 headers=headers,
                 profile=profile,
                 requestProfile=requestProfile,
-                json_parse_strict=json_parse_strict,
             )
         )
     return response_doc

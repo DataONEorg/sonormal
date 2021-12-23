@@ -69,7 +69,7 @@ SO_PROPERTY_ID = f"{SO_}propertyID"
 SO_COMPACT_CONTEXT = {"@context": ["http://schema.org/", {"id": "id", "type": "type"}]}
 
 SO_DATASET_FRAME = {
-    "@context": "https://schema.org/",
+    "@context": "http://schema.org/",
     "@type": "Dataset",
     "identifier": {},
     "creator": {}

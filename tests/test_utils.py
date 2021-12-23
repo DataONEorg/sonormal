@@ -2,6 +2,9 @@ import pytest
 import sonormal.utils
 
 url_name_tests = [
+    [{"url": None, "content_type": None}, None],
+    [{"url": "nothing", "content_type": None}, "nothing.bin"],
+    [{"url": "nothing", "content_type": ""}, "nothing.bin"],
     [{"url": "https://example.net/test.txt", "content_type": "text/plain"}, "test.txt"],
     [
         {"url": "https://example.net/test.txt", "content_type": "application/json"},
@@ -58,5 +61,5 @@ url_name_tests = [
 
 @pytest.mark.parametrize("inp, expected", url_name_tests)
 def test_filenameFromUrl(inp, expected):
-    res = sonormal.utils.fileNameFromURL(**inp)
+    res = sonormal.utils.fileNameFromURL(inp["url"], inp["content_type"])
     assert res == expected
