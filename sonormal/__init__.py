@@ -9,6 +9,7 @@ import urllib.parse as urllib_parse
 import diskcache
 import atexit
 import copy
+from sonormal.config import settings
 
 __L = logging.getLogger("sonormal")
 
@@ -21,18 +22,28 @@ MEDIA_XHTML = "application/xml+xhtml"
 MEDIA_XML = "application/xml"
 
 # Default base to use during expansion
-DEFAULT_BASE = "https://example.net/"
+DEFAULT_BASE = settings.get("DEFAULT_BASE", "https://example.net/")
 
 # Context cache folder
-DEFAULT_CONTEXT_CACHE = os.path.expanduser("~/.local/var/sonormal/contexts")
+DEFAULT_CONTEXT_CACHE = settings.get(
+    "DEFAULT_CONTEXT_CACHE", os.path.expanduser("~/.local/var/sonormal/contexts")
+)
 os.makedirs(DEFAULT_CONTEXT_CACHE, exist_ok=True)
 
 # Location of the schema,.org context
-SCHEMA_ORG_CONTEXT_SOURCE = "https://schema.org/docs/jsonldcontext.jsonld"
+SCHEMA_ORG_CONTEXT_SOURCE = settings.get(
+    "SCHEMA_ORG_CONTEXT_SOURCE", "https://schema.org/docs/jsonldcontext.jsonld"
+)
 
-SCHEMA_ORG_HTTP_CONTEXT_FILE = "schema_org_http_context.jsonld"
-SCHEMA_ORG_HTTPS_CONTEXT_FILE = "schema_org_https_context.jsonld"
-SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE = "schema_org_http_list_context.jsonld"
+SCHEMA_ORG_HTTP_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTP_CONTEXT_FILE", "schema_org_http_context.jsonld"
+)
+SCHEMA_ORG_HTTPS_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTPS_CONTEXT_FILE", "schema_org_http_context.jsonld"
+)
+SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE = settings.get(
+    "SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE", "schema_org_http_list_context.jsonld"
+)
 
 SCHEMA_ORG_CONTEXT_URLS = [
     "http://schema.org",
@@ -58,22 +69,14 @@ SO_PROPERTY_ID = f"{SO_}propertyID"
 SO_COMPACT_CONTEXT = {"@context": ["http://schema.org/", {"id": "id", "type": "type"}]}
 
 SO_DATASET_FRAME = {
-    "@context": "https://schema.org/",
+    "@context": "http://schema.org/",
     "@type": "Dataset",
     "identifier": {},
-    "creator": {},
+    "creator": {}
 }
 
 # regexp to match the typical location of the schema.org remote context
 SO_MATCH = re.compile(r"http(s)?\://schema.org(/)?")
-
-# Location of the schema.org context document
-# Currently forcing to a specific revision of SO that uses the https context
-# More detail at https://github.com/schemaorg/schemaorg/pull/2814#issuecomment-795667992
-# SO_CONTEXT_LOCATION = "https://schema.org/docs/jsonldcontext.jsonld"
-# Set to use a specific version of schema.org context
-SO_CONTEXT_LOCATION = "https://raw.githubusercontent.com/schemaorg/schemaorg/836cae785cfcb09fe69d0a611be9b8c73b67a0d4/data/releases/12.0/schemaorgcontext.jsonld"
-FORCE_SO_VERSION = True
 
 # Timeout for the document loader requests
 REQUEST_TIMEOUT = 30  # seconds
@@ -87,10 +90,12 @@ DEFAULT_RESPONSE_CONTENT_TYPE = MEDIA_HTML
 # not be respected on some services. It's generally OK to fall back to
 # application/ld+json or text/html or even */*, though should be applied
 # consistently per target.
-DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7, */*;q=0.1"
+DEFAULT_REQUEST_ACCEPT_HEADERS = f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9, {MEDIA_HTML};q=0.8, {MEDIA_XHTML};q=0.7"
 
 # Path to the document cache
-DOCUMENT_CACHE_PATH = os.path.expanduser("~/.local/share/sonormal/cache")
+DOCUMENT_CACHE_PATH = settings.get(
+    "DOCUMENT_CACHE_PATH", os.path.expanduser("~/.local/share/sonormal/cache")
+)
 os.makedirs(DOCUMENT_CACHE_PATH, exist_ok=True)
 
 DOCUMENT_CACHE_TIMEOUT = 300  # Cache object expiration in seconds
@@ -110,7 +115,7 @@ atexit.register(__cleanup)
 def prepareSchemaOrgLocalContexts(
     context_folder=DEFAULT_CONTEXT_CACHE,
     src_url=SCHEMA_ORG_CONTEXT_SOURCE,
-    refresh=True,
+    refresh=False,
 ):
     """
     Download a copy of the schema.org context and create variants.
@@ -143,7 +148,6 @@ def prepareSchemaOrgLocalContexts(
         "sos": os.path.join(context_folder, SCHEMA_ORG_HTTPS_CONTEXT_FILE),
         "sol": os.path.join(context_folder, SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE),
     }
-    __L.debug("PATHS = %s", paths)
     for url in SCHEMA_ORG_CONTEXT_URLS:
         SO_CONTEXT[url] = paths["so"]
         SOS_CONTEXT[url] = paths["sos"]
@@ -156,14 +160,19 @@ def prepareSchemaOrgLocalContexts(
     ):
         # Contexts already available
         SO_CONTEXTS_PREPARED = True
+        __L.debug("Local contexts already exist")
         return paths
 
+    __L.info("Downloading and preparing SO contexts")
     # Download context files
     headers = {"Accept": f"{MEDIA_JSONLD};q=1.0, {MEDIA_JSON};q=0.9"}
     response = requests.get(src_url, headers=headers, timeout=10, allow_redirects=True)
     if not response.status_code == requests.codes.OK:
         raise ValueError(f"Unable to retrieve schema.org context from {src_url}")
     so_context = response.json()
+    #SO overrides @id and @type. Don't do that...
+    so_context["@context"]["id"] = "id"
+    so_context["@context"]["type"] = "type"
     with open(paths["so"], "w") as so_dest:
         json.dump(so_context, so_dest, indent=2)
     # Create context doc with https://schema.org/
@@ -173,10 +182,14 @@ def prepareSchemaOrgLocalContexts(
     with open(paths["sos"], "w") as so_dest:
         json.dump(sos_context, so_dest, indent=2)
 
-    # Add @list to identifier and creator
+    # Add @list to identifier, creator, and description
     so_context["@context"]["creator"] = {"@id": "schema:creator", "@container": "@list"}
     so_context["@context"]["identifier"] = {
         "@id": "schema:identifier",
+        "@container": "@list",
+    }
+    so_context["@context"]["description"] = {
+        "@id": "schema:description",
         "@container": "@list",
     }
     with open(paths["sol"], "w") as so_dest:
@@ -186,6 +199,10 @@ def prepareSchemaOrgLocalContexts(
 
 
 class ObjDict(dict):
+    """
+    Implements a dict that enables access to properties like an object.
+    """
+
     def __getattr__(self, name):
         if name in self:
             return self[name]
@@ -205,10 +222,8 @@ class ObjDict(dict):
 class RequestsSessionTrack(requests.Session):
     def get_redirect_target(self, resp):
         L = logging.getLogger("sonormal")
-        L.debug("Response [%s] from %s", resp.status_code, resp.request.url)
         loc = super().get_redirect_target(resp)
-        if not loc is None:
-            L.info("Redirect target: %s %s", resp.status_code, loc)
+        L.debug("Redirect target: %s %s", resp.status_code, str(loc))
         return loc
 
 
@@ -234,7 +249,7 @@ def requests_document_loader_history(secure=False, **kwargs):
         :param url: the URL to retrieve.
         :return: the RemoteDocument.
         """
-        __L.debug("ENTER: loader")
+        __L.debug("Enter loader")
         _sess = RequestsSessionTrack()
         try:
             # validate URL
@@ -264,7 +279,7 @@ def requests_document_loader_history(secure=False, **kwargs):
             if headers is None:
                 headers = {"Accept": DEFAULT_REQUEST_ACCEPT_HEADERS}
 
-            __L.debug("HEADER = %s", headers)
+            __L.debug("Request headers: %s", headers)
             response = _sess.get(url, headers=headers, **kwargs)
 
             content_type = response.headers.get("content-type")
@@ -323,6 +338,7 @@ def requests_document_loader_history(secure=False, **kwargs):
                     and the_linked_alternate.get("type") == "application/ld+json"
                     and not re.match(r"^application\/(\w*\+)?json$", content_type)
                 ):
+                    __L.debug("Linked alternate: %s", the_linked_alternate["target"])
                     doc["contentType"] = "application/ld+json"
                     doc["documentUrl"] = pyld.jsonld.prepend_base(
                         url, the_linked_alternate["target"]
@@ -349,37 +365,6 @@ def requests_document_loader_history(secure=False, **kwargs):
     return loader
 
 
-def cachingDocumentLoader(url, options={}):
-    """
-    Document loader for pyld.jsonld
-
-    Used for operations like resolving remote context documents. This implementation provides
-    a very simple cache (in memory dict) and overrides the location of the schema.org context
-    to use the v12 version of the context document.
-
-    Install by calling:
-
-      pyld.jsonld.set_document_loader(sonormal.cachingDocumentLoader)
-    """
-    __L.debug("DOC LOADER URL = %s", url)
-    if FORCE_SO_VERSION and SO_MATCH.match(url) is not None:
-        __L.debug("Forcing schema.org v12 context")
-        url = SO_CONTEXT_LOCATION
-    global DOCUMENT_CACHE
-    if url in DOCUMENT_CACHE:
-        __L.debug("From cache")
-        return DOCUMENT_CACHE[url]
-    options.setdefault("timeout", REQUEST_TIMEOUT)
-    options.setdefault("allow_redirects", True)
-    loader = requests_document_loader_history(
-        timeout=options.get("timeout"), allow_redirects=options.get("allow_redirects")
-    )
-    resp = loader(url, options=options)
-    # loader raises on error, so failed requests are not cached
-    DOCUMENT_CACHE.set(url, resp, expire=DOCUMENT_CACHE_TIMEOUT)
-    return resp
-
-
 def localRequestsDocumentLoader(
     context_map={}, document_cache=None, fallback_loader=None
 ):
@@ -390,7 +375,7 @@ def localRequestsDocumentLoader(
 
     Args:
         context_map (dict): map of context URL to local document
-        document_cache (dict like): cache for documents
+        document_cache (dict like): cache for documents, can be dict or DiskCache
         fallback_loader: loader to use if not local or in cache
 
     Returns:
@@ -401,6 +386,7 @@ def localRequestsDocumentLoader(
         # is a cached copy available?
         if not document_cache is None:
             if url in document_cache:
+                __L.debug("Cache hit: %s", url)
                 return document_cache[url]
         # does URL match something in the context_map?
         doc = context_map.get(url, None)
@@ -409,7 +395,7 @@ def localRequestsDocumentLoader(
                 "contextUrl": None,
                 "documentUrl": "https://schema.org/docs/jsonldcontext.jsonld",
                 "contentType": "application/ld+json",
-                "document": json.load(open(doc, "r"))
+                "document": json.load(open(doc, "r")),
             }
             return res
         # No mapping available, fall back to using the fallback_loader
@@ -425,18 +411,10 @@ def localRequestsDocumentLoader(
                     __L.warning("Unable to cache response from %s", url)
         return res
 
-    #if no fallback is provided, create a default one using the pyld requests loader
+    # if no fallback is provided, create a default one using the pyld requests loader
     if fallback_loader is None:
         fallback_loader = pyld.jsonld.requests_document_loader()
     return localRequestsDocumentLoaderImpl
-
-
-def installDocumentLoader(expire_existing=False):
-    __L.info("Installing cachingLocalDocumentLoader")
-    pyld.jsonld.set_document_loader(cachingDocumentLoader)
-    global DOCUMENT_CACHE
-    if expire_existing:
-        DOCUMENT_CACHE.expire()
 
 
 def isHttpsSchemaOrg(exp_doc) -> bool:
@@ -515,14 +493,18 @@ def addSchemaOrgListContainer(doc):
 
 def sosoNormalize(doc, options={}):
     """
-    Return JSONLD document expanded and using SOSO recommendations
+    Return JSONLD document expanded and using SOSO recommendations.
+
+    The JSON-LD is set to use a remote reference to the schema.org context
+    and expanded using a modified version of the schema.org context to
+    set the @container for certain elements to be @list.
 
     Args:
         doc: JSONLD
         options: pyld.jsonld.expand options
 
     Returns:
-        expanded JSONLD with http://schema.org/ and @list added to identifier and creator
+        expanded JSONLD with http://schema.org/ and @list for certain elements
     """
     newdoc = switchToHttpSchemaOrg(doc, options=options)
     sosodoc = addSchemaOrgListContainer(newdoc)
