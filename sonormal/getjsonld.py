@@ -13,7 +13,8 @@ import sonormal
 import sonormal.utils
 
 # Wait upto this long for a browser to render a page
-BROWSER_RENDER_TIMEOUT = 10000  # msec
+BROWSER_RENDER_TIMEOUT = 30000  # msec
+REQUEST_TIMEOUT = 10 # sec
 
 __L = logging.getLogger("sonormal.getjsonld")
 
@@ -66,7 +67,7 @@ def responseSummary(resp):
             row["result"] = "<< body >>"
         return row
 
-    #resp = response["response"]
+    # resp = response["response"]
     rs = {
         "request": {},
         "responses": [],
@@ -87,7 +88,13 @@ def responseSummary(resp):
 
 
 # TODO: set request headers in rendered request
-async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=None):
+async def downloadJsonRendered(
+    url,
+    headers={},
+    profile=None,
+    requestProfile=None,
+    browser_timeout=BROWSER_RENDER_TIMEOUT,
+):
     __L.debug("Loading and rendering %s", url)
     # TODO: Handle response link headers. This should not be necessary here unless
     # using this method as the primary mechanism for making the request, which is
@@ -162,7 +169,7 @@ async def downloadJsonRendered(url, headers={}, profile=None, requestProfile=Non
             __L.debug("PAGE WAIT XPATH")
             await page.waitForXPath(
                 f'//script[@type="{sonormal.MEDIA_JSONLD}"]',
-                timeout=BROWSER_RENDER_TIMEOUT,
+                timeout=browser_timeout,
             )
         except Exception as e:
             __L.error(e)
@@ -220,25 +227,38 @@ def downloadJson(
     profile=None,
     requestProfile=None,
     try_jsrender=True,
-    documentLoader=None
+    documentLoader=None,
+    loader_timeout=REQUEST_TIMEOUT
 ):
+    __L.debug(
+        "downloadJson: %s %s %s %s %s",
+        url,
+        headers,
+        requestProfile,
+        try_jsrender,
+        documentLoader,
+    )
     headers.setdefault("Accept", sonormal.DEFAULT_REQUEST_ACCEPT_HEADERS)
     try:
         options = {
             "headers": headers,
             "documentLoader": pyld.jsonld.get_document_loader(),
             "extractAllScripts": True,
+            "timeout":loader_timeout
         }
         if documentLoader is not None:
             options["documentLoader"] = documentLoader
         response_doc = pyld.jsonld.load_document(
             url, options, profile=profile, requestProfile=requestProfile
         )
+        __L.debug("response_doc: %s", response_doc)
+        if len(response_doc.get("document", [])) < 1:
+            raise ValueError("Empty jsonld list.")
         return response_doc
     except requests.Timeout as e:
         __L.error("Request to %s timed out", url)
         return {"ERROR": str(e)}
-    except pyld.jsonld.JsonLdError as e:
+    except (ValueError, pyld.jsonld.JsonLdError) as e:
         __L.warning("No JSON-LD in plain source %s", url)
         if not try_jsrender:
             raise (e)
@@ -246,7 +266,7 @@ def downloadJson(
         # try loading and rendering the page
         response_doc = asyncio.run(
             downloadJsonRendered(
-                url, headers=headers, profile=profile, requestProfile=requestProfile
+                url, headers=headers, profile=profile, requestProfile=requestProfile, browser_timeout=loader_timeout*1000
             )
         )
     return response_doc
