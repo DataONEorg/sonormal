@@ -2,7 +2,6 @@ import logging
 import pytest
 import tempfile
 import json
-import orjson
 import pyld.jsonld
 import sonormal.checksums
 
@@ -142,11 +141,11 @@ def test_jsonldCompare(a, b):
 
 
 @pytest.mark.parametrize("a,b", test_compare)
-def test_jsonldCompareORJSON(a, b):
+def test_jsonldCompareJSON(a, b):
     a_exp = pyld.jsonld.expand(a)
     b_exp = pyld.jsonld.expand(b)
-    a_bytes = orjson.dumps(a_exp, option=orjson.OPT_SORT_KEYS)
-    b_bytes = orjson.dumps(b_exp, option=orjson.OPT_SORT_KEYS)
+    a_bytes = json.dumps(a_exp, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    b_bytes = json.dumps(b_exp, sort_keys=True, separators=(',', ':')).encode("utf-8")
     chk_a, _ = sonormal.checksums.computeChecksumsBytes(a_bytes)
     chk_b, _ = sonormal.checksums.computeChecksumsBytes(b_bytes)
     assert chk_a["sha256"] == chk_b["sha256"]
