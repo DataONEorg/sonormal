@@ -9,29 +9,29 @@ This library and tool is focussed on supporting Schema.org harvesting for the Da
 ## Operation
 
 ```
-Usage: jld [OPTIONS] COMMAND [ARGS]...
-
-  Retrieve and process JSON-LD.
+Usage: so [OPTIONS] COMMAND [ARGS]...
 
 Options:
+  -W, --webpage               Render SPA page
+  -r, --response              Show response information
   -b, --base TEXT             Base URI
   -p, --profile TEXT          JSON-LD Profile
   -P, --request-profile TEXT  JSON-LD Request Profile
-  -r, --response              Show response information
-  -R, --relaxed-json          Relax strict JSON deserialization
-  -W, --webpage               Render SPA page
-  --soprod                    Use schema.org production context instead of v12 https
+  --verbosity TEXT            Logging level
   --help                      Show this message and exit.
 
 Commands:
-  cache        Cache management, list or purge
-  canon        Normalize and render canonical form
+  cache-clear
+  cache-list
+  canon        Normalize the JSON-LD from SOURCE by applying URDNA2015...
   compact      Compact the JSON-LD SOURCE
-  frame        Apply frame to source
-  get          Retrieve JSON-LD
-  identifiers  Extract Dataset identifiers
-  nquads       Transform JSON-LD to N-Quads
-  play         Load in JSON-LD Playground
+  frame        Apply frame to source (default = Dataset)
+  get          Retrieve JSON-LD from JSON-LD or HTML document from stdin,...
+  identifiers  Get document identifiers and optionally compute checksums...
+  info         Compute information about the JSON-LD
+  nquads       Output the JSON-LD from SOURCE in N-Quads format
+  play
+  publish      curl -v -H "Authorization: Bearer ${JWT}" -F...
 ```
 
 `cache` lists entries in the local cache (in folder `~/.local/sonormal/cache`) and optionally purges entries.
@@ -71,7 +71,7 @@ Commands:
 Download and extract JSON-LD from [Hydroshare](https://www.hydroshare.org/):
 
 ```
-jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/"
+so get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/"
 {
   "@context": {
     "@vocab": "https://schema.org/",
@@ -87,7 +87,7 @@ jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/"
 Download and extract JSON-LD from a DataONE single page application (with JSON-LD rendered by the client):
 
 ```
-jld -W get "https://search.dataone.org/view/urn%3Auuid%3Add9ad874-ded8-48fe-908a-06732b9a6297"
+so -W get "https://search.dataone.org/view/urn%3Auuid%3Add9ad874-ded8-48fe-908a-06732b9a6297"
 [
   {
     "@context": {
