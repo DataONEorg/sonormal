@@ -51,7 +51,7 @@ logging_config = {
             "level": "INFO",
             "propogate": False,
         },
-        "sonormal": {"level": "INFO"},
+        "sonormal": {"level": "DEBUG"},
         "urllib3": {
             "level": "WARNING",
         },
@@ -59,7 +59,7 @@ logging_config = {
             "level": "ERROR",
         },
         "pyppeteer": {
-            "level": "ERROR",
+            "level": "INFO",
         },
     },
 }
@@ -74,6 +74,7 @@ LOG_LEVELS = {
     "CRITICAL": logging.CRITICAL,
 }
 
+DEFAULT_TIMEOUT = 10
 
 def getLogger():
     return logging.getLogger("so")
@@ -91,8 +92,9 @@ def logResponseInfo(resp):
 @click.option("-b", "--base", envvar="SO_BASE", default=None, help="Base URI")
 @click.option("-p", "--profile", default=None, help="JSON-LD Profile")
 @click.option("-P", "--request-profile", default=None, help="JSON-LD Request Profile")
+@click.option("--timeout", default=DEFAULT_TIMEOUT, help="Document loader timeout in seconds")
 @click.option("--verbosity", default="INFO", help="Logging level")
-def main(ctx, webpage, response, base, profile, request_profile, verbosity):
+def main(ctx, webpage, response, base, profile, request_profile, timeout, verbosity):
     verbosity = verbosity.upper()
     logging_config["loggers"][""]["level"] = verbosity
     logging_config["loggers"]["sonormal"]["level"] = verbosity
@@ -113,6 +115,7 @@ def main(ctx, webpage, response, base, profile, request_profile, verbosity):
     ctx.obj["profile"] = profile
     ctx.obj["request_profile"] = request_profile
     ctx.obj["documentLoader"] = documentLoader
+    ctx.obj["timeout"] = timeout
 
 
 def _getDocument(
@@ -122,6 +125,7 @@ def _getDocument(
     requestProfile=None,
     documentUrl=sonormal.DEFAULT_BASE,
     documentLoader=None,
+    timeout=DEFAULT_TIMEOUT
 ):
     def _jsonldFromString(_src):
         try:
@@ -164,6 +168,7 @@ def _getDocument(
                 profile=profile,
                 requestProfile=requestProfile,
                 documentLoader=documentLoader,
+                loader_timeout=timeout
             )
         else:
             # input is a filename?
@@ -235,6 +240,7 @@ def getJsonld(ctx, expand, sohttp, soso, canonicalize, source=None):
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
         documentLoader=ctx.obj.get("documentLoader", None),
+        timeout=ctx.obj.get("timeout",DEFAULT_TIMEOUT)
     )
     if ctx.obj["show_response"]:
         logResponseInfo(doc["response"])
