@@ -1,31 +1,177 @@
-# SoNormal
+# sonormal
 
-SO Normal provides routines for working with JSON-LD and schema.org metadata
+`sonormal` is a python library to assist with extraction and processing of schema.org content with emphasis on the [`Dataset`](https://schema.org/Dataset) class.
 
-## Usage
+Included is a command line tool `jld` for retrieving and extracting JSON-LD from a web page or other resource and performing various operations on JSON-LD.
 
-### Building the book
+This library and tool is focussed on supporting Schema.org harvesting for the DataONE infrastructure.
 
-If you'd like to develop and/or build the SoNormal book, you should:
+## Operation
 
-1. Clone this repository
-2. Run `pip install -r requirements.txt` (it is recommended you do this within a virtual environment)
-3. (Optional) Edit the books source files located in the `sonormal/` directory
-4. Run `jupyter-book clean sonormal/` to remove any existing builds
-5. Run `jupyter-book build sonormal/`
+```
+Usage: so [OPTIONS] COMMAND [ARGS]...
 
-A fully-rendered HTML version of the book will be built in `sonormal/_build/html/`.
+Options:
+  -W, --webpage               Render SPA page
+  -r, --response              Show response information
+  -b, --base TEXT             Base URI
+  -p, --profile TEXT          JSON-LD Profile
+  -P, --request-profile TEXT  JSON-LD Request Profile
+  --verbosity TEXT            Logging level
+  --help                      Show this message and exit.
 
-### Hosting the book
+Commands:
+  cache-clear
+  cache-list
+  canon        Normalize the JSON-LD from SOURCE by applying URDNA2015...
+  compact      Compact the JSON-LD SOURCE
+  frame        Apply frame to source (default = Dataset)
+  get          Retrieve JSON-LD from JSON-LD or HTML document from stdin,...
+  identifiers  Get document identifiers and optionally compute checksums...
+  info         Compute information about the JSON-LD
+  nquads       Output the JSON-LD from SOURCE in N-Quads format
+  play
+  publish      curl -v -H "Authorization: Bearer ${JWT}" -F...
+```
 
-Please see the [Jupyter Book documentation](https://jupyterbook.org/publish/web.html) to discover options for deploying a book online using services such as GitHub, GitLab, or Netlify.
+`cache` lists entries in the local cache (in folder `~/.local/sonormal/cache`) and optionally purges entries.
 
-For GitHub and GitLab deployment specifically, the [cookiecutter-jupyter-book](https://github.com/executablebooks/cookiecutter-jupyter-book) includes templates for, and information about, optional continuous integration (CI) workflow files to help easily and automatically deploy books online with GitHub or GitLab. For example, if you chose `github` for the `include_ci` cookiecutter option, your book template was created with a GitHub actions workflow file that, once pushed to GitHub, automatically renders and pushes your book to the `gh-pages` branch of your repo and hosts it on GitHub Pages when a push or pull request is made to the main branch.
+`canon` canonicalizes the source JSON-LD by expanding and applying the URDNA 2015 algorithm, then serializes with ordered terms, no new lines, and no spaces between delimiters. Checksums computed on the result are consistent between various arrangements of the same input source.
 
-## Contributors
+`compact` applies the JSON-LD compaction algorithm to the source using the context:
+```
+{"@context": [
+    "https://schema.org/", 
+    { 
+      "id": "id", 
+      "type": "type" 
+    }
+  ]
+}
+```
 
-We welcome and recognize all contributions. You can see a list of current contributors in the [contributors tab](https://github.com/datadavev/sonormal/graphs/contributors).
+`frame` applies the JSON-LD framing algorithm to structure the JSON-LD for ease of identifier extraction from a `Dataset` instance using the frame:
+```
+{
+    "@context": {"@vocab":"https://schema.org/"},
+    "@type": "Dataset",
+    "identifier": {},
+    "creator": {}
+}
+```
 
-## Credits
+`get` retrieves the document from a file or URL, following redirects and Link headers as appropriate. Content is extracted from HTML pages, and optionally (with the `-W` flag set) from single page applications where the JSON-LD may be generated on the fly.
 
-This project is created using the excellent open source [Jupyter Book project](https://jupyterbook.org/) and the [executablebooks/cookiecutter-jupyter-book template](https://github.com/executablebooks/cookiecutter-jupyter-book).
+`identifiers` extracts `Dataset` identifier values and computes checksums of the JSON-LD.
+
+`nquads` serializes the JSON-LD to N-Quads format.
+
+## Examples
+
+Download and extract JSON-LD from [Hydroshare](https://www.hydroshare.org/):
+
+```
+so get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/"
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "datacite": "http://purl.org/spar/datacite/"
+  },
+  "@id": "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257",
+  "url": "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257",
+  "@type": "Dataset",
+  "additionalType": "http://www.hydroshare.org/terms/CompositeResource",
+...
+```
+
+Download and extract JSON-LD from a DataONE single page application (with JSON-LD rendered by the client):
+
+```
+so -W get "https://search.dataone.org/view/urn%3Auuid%3Add9ad874-ded8-48fe-908a-06732b9a6297"
+[
+  {
+    "@context": {
+      "@vocab": "https://schema.org/"
+    },
+    "@type": "Dataset",
+    "@id": "https://dataone.org/datasets/urn%3Auuid%3Add9ad874-ded8-48fe-908a-06732b9a6297",
+    "datePublished": "2013-10-23T00:00:00Z",
+    "publisher": {
+      "@type": "Organization",
+      "name": "California Ocean Protection Council Data Repository"
+    },
+    "identifier": "urn:uuid:dd9ad874-ded8-48fe-908a-06732b9a6297",
+...
+```
+
+Processing operations can take stdin as input. For example, normalize JSON-LD using the URDNA 2015 algorithm for assigning ids to blank nodes. Note the source is expanded and canonicalized, output is serialized with no new lines and no spaces between delimiters in preparation for calculating checksums. 
+
+```
+jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | jld canon
+
+[{"@id":"_:c14n0","@type":["http://purl.org/spar/datacite/ResourceIdentifier","https://schema.org/PropertyValue"],
+"http://purl.org/spar/datacite/usesIdentifierScheme":[{"@id":"http://purl.org/spar/datacite/
+local-resource-identifier-scheme"}],"https://schema.org/propertyId":[{"@value":"UUID"}],"https://schema.org/value":
+[{"@value":"uuid:058d173af80a4784b471d29aa9ad7257"}]},{"@id":"_:c14n1","@type":["https://schema.org/Place"],
+...
+```
+
+Extract identifiers and compute checksums:
+
+```
+jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | jld identifiers -c
+[
+  {
+    "@id": [
+      "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257"
+    ],
+    "url": [
+      "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257"
+    ],
+    "identifier": [
+      "uuid:058d173af80a4784b471d29aa9ad7257"
+    ],
+    "hashes": {
+      "sha256": "a8cb4e5806045032fc2e7ad0b762336ff76f3792271ddc071c0d8c85d6b69ac5",
+      "sha1": "f6abef03156a5adb6d395f385628a2894e7b920e",
+      "md5": "03a357ba8043ac734aa3b9e9bb514ff9"
+    }
+  }
+]
+```
+
+Open the canonical form of the BCO-DMO dataset `https://www.bco-dmo.org/dataset/839373` in [JSON-LD Playground](https://json-ld.org/playground/):
+
+```
+jld get "https://www.bco-dmo.org/dataset/839373" | jld canon | jld play -B
+New public gist created at: 
+  https://gist.github.com/datadavev/4f3cad1a104263bcf1c1bb96723911fc
+Link to JSON-LD playground:
+  https://json-ld.org/playground/#startTab=tab-expanded&json-ld=https%3A%2F%2Fgist.githubusercontent.com%2Fdatadavev%2F4f3cad1a104263bcf1c1bb96723911fc%2Fraw
+```
+
+
+## Installation
+
+Install using [`poetry`](https://python-poetry.org/). For example:
+
+```
+git clone https://github.com/datadavev/sonormal.git
+cd sonormal
+poetry install
+```
+Then run using:
+```
+poetry run jld
+```
+
+Alternatively, install into a separately created virtual environment:
+```
+poetry install
+```
+Then run like:
+```
+jld
+```
+
+Note that the `play` command for uploading to the [JSON-LD Playground](https://json-ld.org/playground/) requires that the GitHub [command line tool `gh`](https://github.com/cli/cli) is available on the path, and that you have authenticated the tool.
