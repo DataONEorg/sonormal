@@ -1,5 +1,5 @@
 """
-Implements jld command line tool for JSON-LD
+Implements so command line tool for schema.org and JSON-LD.
 """
 
 import sys
@@ -182,6 +182,13 @@ def _getDocument(
         )
     return doc
 
+
+@main.command("init")
+@click.pass_context
+def initialize_contexts(ctx):
+    L = getLogger()
+    paths = sonormal.prepareSchemaOrgLocalContexts(refresh=True)
+    L.info("Document paths: %s", paths)
 
 @main.command("cache-clear")
 @click.pass_context
