@@ -1,5 +1,5 @@
 """
-Implements jld command line tool for JSON-LD
+Implements so command line tool for schema.org and JSON-LD.
 """
 
 import sys
@@ -186,8 +186,14 @@ def _getDocument(
     return doc
 
 
-@main.command("cache", short_help="Cache management, list or purge")
-@click.option("-p", "--purge", is_flag=True, help="Purge the cache")
+@main.command("init")
+@click.pass_context
+def initialize_contexts(ctx):
+    L = getLogger()
+    paths = sonormal.prepareSchemaOrgLocalContexts(refresh=True)
+    L.info("Document paths: %s", paths)
+
+@main.command("cache-clear")
 @click.pass_context
 def cacheList(ctx, purge):
     '''Manage the downloaded document cache (~/.local/sonormal/cache/)
