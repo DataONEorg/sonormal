@@ -2,7 +2,7 @@
 
 `sonormal` is a python library to assist with extraction and processing of schema.org content with emphasis on the [`Dataset`](https://schema.org/Dataset) class.
 
-Included is a command line tool `jld` for retrieving and extracting JSON-LD from a web page or other resource and performing various operations on JSON-LD.
+Included is a command line tool `so` for retrieving and extracting JSON-LD from a web page or other resource and performing various operations on JSON-LD.
 
 This library and tool is focussed on supporting Schema.org harvesting for the DataONE infrastructure.
 
