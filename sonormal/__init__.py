@@ -39,7 +39,7 @@ SCHEMA_ORG_HTTP_CONTEXT_FILE = settings.get(
     "SCHEMA_ORG_HTTP_CONTEXT_FILE", "schema_org_http_context.jsonld"
 )
 SCHEMA_ORG_HTTPS_CONTEXT_FILE = settings.get(
-    "SCHEMA_ORG_HTTPS_CONTEXT_FILE", "schema_org_http_context.jsonld"
+    "SCHEMA_ORG_HTTPS_CONTEXT_FILE", "schema_org_https_context.jsonld"
 )
 SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE = settings.get(
     "SCHEMA_ORG_HTTP_LIST_CONTEXT_FILE", "schema_org_http_list_context.jsonld"
