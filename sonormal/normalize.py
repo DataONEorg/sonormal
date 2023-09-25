@@ -31,6 +31,11 @@ def _getIdentifiers(doc):
         v = av.get("@value", None)
         if v is not None:
             ids.append(v)
+    # added because @id can replace other identifier values
+    v = doc.get("@id", None)
+    if not v is None:
+        ids.append(v)
+        return ids
     return ids
 
 
@@ -55,6 +60,8 @@ def _getDatasetIdentifiers(jdoc):
         if not u is None:
             ids["url"].append(u)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
+        _identstr = json.dumps(ident, indent=2)
+        __L.debug(f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
         ids["identifier"] += _getListIdentifiers(ident)
         ids["identifier"] += _getIdentifiers(ident)
     return ids
@@ -112,14 +119,14 @@ def forceSODatasetLists(jdoc):
     return docs
 
 
-def frameSODataset(jdoc, frame_doc=None):
+def frameSODataset(jdoc, frame_doc=None, options={}):
     __L.debug("Framing")
     if frame_doc is None:
         frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
     try:
-        fdoc = pyld.jsonld.frame(jdoc, frame_doc)
+        fdoc = pyld.jsonld.frame(jdoc, frame_doc, options=options)
         __L.info("fdoc OK")
-        return pyld.jsonld.expand(fdoc)
+        return pyld.jsonld.expand(fdoc, options=options)
     except Exception as e:
         __L.error(e)
     __L.info("fdoc FAIL")
