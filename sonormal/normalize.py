@@ -31,11 +31,6 @@ def _getIdentifiers(doc):
         v = av.get("@value", None)
         if v is not None:
             ids.append(v)
-    # added because @id can replace other identifier values
-    v = doc.get("@id", None)
-    if not v is None:
-        ids.append(v)
-        return ids
     return ids
 
 
