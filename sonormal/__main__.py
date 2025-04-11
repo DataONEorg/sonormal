@@ -461,7 +461,7 @@ def jsonldPlayground(ctx, open_browser, source=None):
         render=ctx.obj.get("render", True),
         profile=ctx.obj.get("profile", None),
         requestProfile=ctx.obj.get("request_profile", None),
-        json_parse_strict=ctx.obj.get("json_parse_strict", True),
+        json_parse_strict=ctx.obj.get("json_parse_strict", False),
     )
     if doc["document"] is None:
         L.error("No document loaded from %s", input)
