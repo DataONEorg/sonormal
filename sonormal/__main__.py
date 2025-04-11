@@ -19,6 +19,8 @@ import sonormal.utils
 import sonormal.getjsonld
 import sonormal.normalize
 import sonormal.checksums
+import urllib.parse
+import webbrowser
 
 logging_config = {
     "version": 1,
