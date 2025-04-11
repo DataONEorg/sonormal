@@ -1,6 +1,9 @@
 import os
 import re
 import uuid
+import posixpath
+import mimetypes
+import urllib.parse
 import datetime
 import dateparser
 import cgi
@@ -14,6 +17,18 @@ JSON_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 """
 
 RE_SPACE = re.compile(r"\s")
+
+EXTRA_MIME_TYPES = {
+    None: ".bin",
+    "": ".bin",
+    "application/ld+json": ".jsonld",
+}
+
+COMMON_PATHS = [
+    '',
+    'download',
+    'data',
+]
 
 
 def stringHasSpace(s):
@@ -126,3 +141,35 @@ def parseHTTPHeader(hv):
         parts = cgi.parse_header((val))
         res.append((_uriValue(parts[0]), parts[1]))
     return res
+
+
+def guessExtension(content_type):
+    ext = EXTRA_MIME_TYPES.get(content_type, None)
+    if ext is not None:
+        return ext
+    ext = mimetypes.guess_extension(content_type)
+    if ext is not None:
+        return ext
+    return ".bin"
+
+
+def fileNameFromURL(url, content_type="application/octet-stream"):
+    if url is None:
+        return None
+    _parts = urllib.parse.urlsplit(url)
+    _path_parts = urllib.parse.unquote(_parts.path).split("/")
+    n = -1
+    while _path_parts[n] in COMMON_PATHS and -n < len(_path_parts):
+        n = n-1
+    base_name = _path_parts[n]
+    if base_name == '':
+        return None
+    extension = guessExtension(content_type).strip(".")
+    _bn_parts = base_name.split(".")
+    if len(_bn_parts) > 1:
+        if _bn_parts[-1] != extension:
+            base_name = f"{base_name}.{extension}"
+    else:
+        base_name = f"{base_name}.{extension}"
+    return base_name
+
