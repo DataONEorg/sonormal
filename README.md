@@ -107,7 +107,7 @@ so -W get "https://search.dataone.org/view/urn%3Auuid%3Add9ad874-ded8-48fe-908a-
 Processing operations can take stdin as input. For example, normalize JSON-LD using the URDNA 2015 algorithm for assigning ids to blank nodes. Note the source is expanded and canonicalized, output is serialized with no new lines and no spaces between delimiters in preparation for calculating checksums. 
 
 ```
-jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | jld canon
+so get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | so canon
 
 [{"@id":"_:c14n0","@type":["http://purl.org/spar/datacite/ResourceIdentifier","https://schema.org/PropertyValue"],
 "http://purl.org/spar/datacite/usesIdentifierScheme":[{"@id":"http://purl.org/spar/datacite/
@@ -119,7 +119,7 @@ local-resource-identifier-scheme"}],"https://schema.org/propertyId":[{"@value":"
 Extract identifiers and compute checksums:
 
 ```
-jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | jld identifiers -c
+so get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" | so identifiers -c
 [
   {
     "@id": [
@@ -143,7 +143,7 @@ jld get "https://www.hydroshare.org/resource/058d173af80a4784b471d29aa9ad7257/" 
 Open the canonical form of the BCO-DMO dataset `https://www.bco-dmo.org/dataset/839373` in [JSON-LD Playground](https://json-ld.org/playground/):
 
 ```
-jld get "https://www.bco-dmo.org/dataset/839373" | jld canon | jld play -B
+so get "https://www.bco-dmo.org/dataset/839373" | so canon | so play -B
 New public gist created at: 
   https://gist.github.com/datadavev/4f3cad1a104263bcf1c1bb96723911fc
 Link to JSON-LD playground:
@@ -162,7 +162,7 @@ poetry install
 ```
 Then run using:
 ```
-poetry run jld
+poetry run so
 ```
 
 Alternatively, install into a separately created virtual environment:
@@ -171,7 +171,7 @@ poetry install
 ```
 Then run like:
 ```
-jld
+so
 ```
 
 Note that the `play` command for uploading to the [JSON-LD Playground](https://json-ld.org/playground/) requires that the GitHub [command line tool `gh`](https://github.com/cli/cli) is available on the path, and that you have authenticated the tool.
