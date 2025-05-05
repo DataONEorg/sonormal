@@ -17,6 +17,10 @@ def _getValueOrURI(doc):
     v = doc.get("@value", None)
     if v is not None:
         return v
+    # hack to accommodate repos who don't use @value
+    v = doc.get("value", None)
+    if v is not None:
+        return v
     return doc.get("@id", None)
 
 
