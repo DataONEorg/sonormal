@@ -24,6 +24,16 @@ def _getValueOrURI(doc):
     return doc.get("@id", None)
 
 
+def _getURLs(doc):
+    urls = []
+    vs = doc.get(sonormal.SO_URL, [])
+    for av in vs:
+        v = av.get("@id", None)
+        if v is not None:
+            urls.append(v)
+    return urls
+
+
 def _getIdentifiers(doc):
     ids = []
     v = doc.get("@value", None)
@@ -58,6 +68,7 @@ def _getDatasetIdentifiers(jdoc):
         u = _getValueOrURI(_url)
         if not u is None:
             ids["url"].append(u)
+    ids["url"] += _getURLs(ident)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
         _identstr = json.dumps(ident, indent=2)
         __L.debug(f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
