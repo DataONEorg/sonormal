@@ -157,11 +157,11 @@ def frameSODataset(jdoc, frame_doc=None, options={}):
         frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
     try:
         fdoc = pyld.jsonld.frame(jdoc, frame_doc, options=options)
-        __L.info("fdoc OK")
+        __L.debug("fdoc OK")
         return pyld.jsonld.expand(fdoc, options=options)
     except Exception as e:
         __L.error(e)
-    __L.info("fdoc FAIL")
+    __L.warning("fdoc FAIL")
     return []
 
 
