@@ -86,9 +86,11 @@ def _getDatasetIdentifiers(jdoc):
         __L.debug(level=5, msg=f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
         ids["identifier"] += _getListIdentifiers(ident)
         ids["identifier"] += _getIdentifiers(ident)
-        ids["identifier"] += [_getValueOrURI(ident)]
         ids["url"] += _getListURLs(ident)
         ids["url"] += _getURLs(ident)
+        u = _getValueOrURI(ident)
+        if not u is None:
+            ids["identifier"].append(u)
     __L.debug(f"_getDatasetIdentifiers ids: {ids}")
     return ids
 
