@@ -15,22 +15,32 @@ __L = logging.getLogger("sonormal")
 
 def _getValueOrURI(doc):
     v = doc.get("@value", None)
-    if v is not None:
-        return v
-    # hack to accommodate repos who don't use @value
-    v = doc.get("value", None)
-    if v is not None:
-        return v
+    if not v is None:
+        __L.debug(f"_getValueOrURI got @value: {v}")
+        # Check if the value is a URI
+        if isinstance(v, str) and v.startswith(("http", "https", "doi:", "urn:")):
+            __L.debug(f"_getValueOrURI found valid @value URI: {v}")
+            return v
+        __L.debug(f"_getValueOrURI not a URI: {v}")
+    __L.debug(f"_getValueOrURI found: {doc.get('@id', None)}")
     return doc.get("@id", None)
 
 
 def _getURLs(doc):
     urls = []
-    vs = doc.get(sonormal.SO_URL, [])
-    for av in vs:
-        v = av.get("@id", None)
-        if v is not None:
-            urls.append(v)
+    us = doc.get(sonormal.SO_URL, [])
+    for au in us:
+        u = au.get("@id", None)
+        if u is not None:
+            urls.append(u)
+    __L.debug(f"_getURLs got urls: {urls}")
+    return urls
+
+
+def _getListURLs(doc):
+    urls = []
+    for url in doc.get("@list", []):
+        urls += _getURLs(url)
     return urls
 
 
@@ -38,13 +48,16 @@ def _getIdentifiers(doc):
     ids = []
     v = doc.get("@value", None)
     if not v is None:
+        __L.debug(f"_getIdentifiers got @value: {v}")
         ids.append(v)
-        return ids
+        __L.debug(f"_getIdentifiers ids: {ids}")
     vs = doc.get(sonormal.SO_VALUE, [])
+    __L.debug(f"_getIdentifiers got SO:value: {vs}")
     for av in vs:
         v = av.get("@value", None)
-        if v is not None:
+        if not v is None:
             ids.append(v)
+    __L.debug(f"_getIdentifiers ids: {ids}")
     return ids
 
 
@@ -68,12 +81,15 @@ def _getDatasetIdentifiers(jdoc):
         u = _getValueOrURI(_url)
         if not u is None:
             ids["url"].append(u)
-    ids["url"] += _getURLs(ident)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
         _identstr = json.dumps(ident, indent=2)
         __L.debug(f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
         ids["identifier"] += _getListIdentifiers(ident)
         ids["identifier"] += _getIdentifiers(ident)
+        ids["identifier"] += _getValueOrURI(ident)
+        ids["url"] += _getListURLs(ident)
+        ids["url"] += _getURLs(ident)
+    __L.debug(f"_getDatasetIdentifiers ids: {ids}")
     return ids
 
 
