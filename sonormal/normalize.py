@@ -83,7 +83,7 @@ def _getDatasetIdentifiers(jdoc):
             ids["url"].append(u)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
         _identstr = json.dumps(ident, indent=2)
-        __L.debug(f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
+        __L.debug(level=5, msg=f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
         ids["identifier"] += _getListIdentifiers(ident)
         ids["identifier"] += _getIdentifiers(ident)
         ids["identifier"] += [_getValueOrURI(ident)]
@@ -106,6 +106,7 @@ def getDatasetsIdentifiers(jdoc):
     """
     ids = []
     for doc in jdoc:
+        __L.log(level=5, msg=f"getDatasetsIdentifiers doc: {doc}")
         _ids = _getDatasetIdentifiers(doc)
         if not _ids is None:
             ids.append(_ids)
