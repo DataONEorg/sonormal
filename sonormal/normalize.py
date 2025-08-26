@@ -68,7 +68,7 @@ def _getListIdentifiers(doc):
     return ids
 
 
-def _getDatasetIdentifiers(jdoc):
+def _getDatasetIdentifiers(jdoc, prefer_str=False):
     t = jdoc.get("@type", [])
     if not sonormal.SO_DATASET in t:
         return None
@@ -86,7 +86,12 @@ def _getDatasetIdentifiers(jdoc):
         __L.log(level=5, msg=f'Found entries under {sonormal.SO_VALUE}:\n{json.dumps(ident, indent=2)}')
         u = _getValueOrURI(ident)
         if not u is None:
-            ids["identifier"].append(u)
+            if prefer_str and prefer_str in u:
+                # add preferred identifiers to the front of the list
+                __L.debug(f'Found preferred identifier: {u}')
+                ids["identifier"].insert(0, u)
+            else:
+                ids["identifier"].append(u)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
         _identstr = json.dumps(ident, indent=2)
         __L.log(level=5, msg=f'Found entries under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
@@ -98,7 +103,7 @@ def _getDatasetIdentifiers(jdoc):
     return ids
 
 
-def getDatasetsIdentifiers(jdoc):
+def getDatasetsIdentifiers(jdoc, prefer_str=False):
     """
     Extract PID, series_id, alt_identifiers from a list of JSON-LD blocks
 
@@ -112,7 +117,7 @@ def getDatasetsIdentifiers(jdoc):
     ids = []
     for doc in jdoc:
         __L.log(level=5, msg=f"_getDatasetsIdentifiers doc: {doc}")
-        _ids = _getDatasetIdentifiers(doc)
+        _ids = _getDatasetIdentifiers(doc, prefer_str=prefer_str)
         if not _ids is None:
             ids.append(_ids)
     return ids
