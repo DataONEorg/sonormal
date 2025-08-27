@@ -15,22 +15,49 @@ __L = logging.getLogger("sonormal")
 
 def _getValueOrURI(doc):
     v = doc.get("@value", None)
-    if v is not None:
-        return v
+    if not v is None:
+        __L.debug(f"_getValueOrURI got @value: {v}")
+        # Check if the value is a URI
+        if isinstance(v, str) and v.startswith(("http", "https", "doi:", "urn:")):
+            __L.debug(f"_getValueOrURI found valid @value URI: {v}")
+            return v
+        __L.debug(f"_getValueOrURI not a URI: {v}")
+    __L.debug(f"_getValueOrURI found: {doc.get('@id', None)}")
     return doc.get("@id", None)
+
+
+def _getURLs(doc):
+    urls = []
+    us = doc.get(sonormal.SO_URL, [])
+    for au in us:
+        u = au.get("@id", None)
+        if u is not None:
+            urls.append(u)
+    __L.debug(f"_getURLs got urls: {urls}")
+    return urls
+
+
+def _getListURLs(doc):
+    urls = []
+    for url in doc.get("@list", []):
+        urls += _getURLs(url)
+    return urls
 
 
 def _getIdentifiers(doc):
     ids = []
     v = doc.get("@value", None)
     if not v is None:
+        __L.debug(f"_getIdentifiers got @value: {v}")
         ids.append(v)
-        return ids
+        __L.debug(f"_getIdentifiers ids: {ids}")
     vs = doc.get(sonormal.SO_VALUE, [])
+    __L.debug(f"_getIdentifiers got SO:value: {vs}")
     for av in vs:
         v = av.get("@value", None)
-        if v is not None:
+        if not v is None:
             ids.append(v)
+    __L.debug(f"_getIdentifiers ids: {ids}")
     return ids
 
 
@@ -41,7 +68,7 @@ def _getListIdentifiers(doc):
     return ids
 
 
-def _getDatasetIdentifiers(jdoc):
+def _getDatasetIdentifiers(jdoc, prefer_str=False):
     t = jdoc.get("@type", [])
     if not sonormal.SO_DATASET in t:
         return None
@@ -51,18 +78,32 @@ def _getDatasetIdentifiers(jdoc):
         ids["@id"].append(_id)
     _urls = jdoc.get(sonormal.SO_URL, [])
     for _url in _urls:
+        __L.log(level=5, msg=f'Found entries under {sonormal.SO_URL}:\n{json.dumps(_url, indent=2)}')
         u = _getValueOrURI(_url)
         if not u is None:
             ids["url"].append(u)
+    for ident in jdoc.get(sonormal.SO_VALUE, []):
+        __L.log(level=5, msg=f'Found entries under {sonormal.SO_VALUE}:\n{json.dumps(ident, indent=2)}')
+        u = _getValueOrURI(ident)
+        if not u is None:
+            if prefer_str and prefer_str in u:
+                # add preferred identifiers to the front of the list
+                __L.debug(f'Found preferred identifier: {u}')
+                ids["identifier"].insert(0, u)
+            else:
+                ids["identifier"].append(u)
     for ident in jdoc.get(sonormal.SO_IDENTIFIER, []):
         _identstr = json.dumps(ident, indent=2)
-        __L.debug(f'Found entry under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
+        __L.log(level=5, msg=f'Found entries under {sonormal.SO_IDENTIFIER}:\n{_identstr}')
         ids["identifier"] += _getListIdentifiers(ident)
         ids["identifier"] += _getIdentifiers(ident)
+        ids["url"] += _getListURLs(ident)
+        ids["url"] += _getURLs(ident)
+    __L.debug(f"_getDatasetIdentifiers ids: {ids}")
     return ids
 
 
-def getDatasetsIdentifiers(jdoc):
+def getDatasetsIdentifiers(jdoc, prefer_str=False):
     """
     Extract PID, series_id, alt_identifiers from a list of JSON-LD blocks
 
@@ -75,7 +116,8 @@ def getDatasetsIdentifiers(jdoc):
     """
     ids = []
     for doc in jdoc:
-        _ids = _getDatasetIdentifiers(doc)
+        __L.log(level=5, msg=f"_getDatasetsIdentifiers doc: {doc}")
+        _ids = _getDatasetIdentifiers(doc, prefer_str=prefer_str)
         if not _ids is None:
             ids.append(_ids)
     return ids
@@ -120,11 +162,11 @@ def frameSODataset(jdoc, frame_doc=None, options={}):
         frame_doc = copy.deepcopy(sonormal.SO_DATASET_FRAME)
     try:
         fdoc = pyld.jsonld.frame(jdoc, frame_doc, options=options)
-        __L.info("fdoc OK")
+        __L.debug("fdoc OK")
         return pyld.jsonld.expand(fdoc, options=options)
     except Exception as e:
         __L.error(e)
-    __L.info("fdoc FAIL")
+    __L.warning("fdoc FAIL")
     return []
 
 
